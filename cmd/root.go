@@ -5,7 +5,6 @@ import (
 	"os"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/sectore/fit-sum-tui/internal/fit"
 	"github.com/sectore/fit-sum-tui/internal/tui"
 	"github.com/spf13/cobra"
 )
@@ -23,18 +22,13 @@ var rootCmd = &cobra.Command{
 			path = d
 		}
 
-		fitFiles, err := fit.GetFitFiles(path)
-		if err != nil {
-			return err
-		}
-
 		program := tea.NewProgram(
-			tui.InitialModel(path, fitFiles),
+			tui.InitialModel(path),
 			tea.WithAltScreen(),
 		)
 		model, err := program.Run()
 		if err != nil {
-			return fmt.Errorf("Error running program: %v", err)
+			return fmt.Errorf("Could not run program: %v", err)
 		}
 		fmt.Printf("TUI exited -> state -> %v", model)
 
