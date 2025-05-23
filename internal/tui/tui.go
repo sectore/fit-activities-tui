@@ -34,10 +34,11 @@ func InitialModel(path string) Model {
 }
 
 func (m Model) Init() tea.Cmd {
-	return tea.Batch(getFilesCmd(m.importPath), m.spinner.Tick)
+	return tea.Batch(m.spinner.Tick, getFilesCmd(m.importPath))
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmds []tea.Cmd
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
@@ -57,25 +58,26 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.activities = activities
 		m.activities[0].Data = common.ActivityLoading(nil)
-		return m, parseFileCmd(m.activities[0])
+		cmds = append(cmds, parseFileCmd(m.activities[0]))
 
 	case parseFileResultMsg:
 		m.activities[m.currentFileIndex] = msg.activity
 		if m.currentFileIndex < len(m.activities)-1 {
 			m.currentFileIndex++
 			m.activities[m.currentFileIndex].Data = common.ActivityLoading(nil)
-			return m, parseFileCmd(m.activities[m.currentFileIndex])
+			cmds = append(cmds, parseFileCmd(m.activities[m.currentFileIndex]))
 		}
-		return m, nil
 
 	case errMsg:
 		m.errMsgs = append(m.errMsgs, msg)
-		return m, nil
-	default:
-		var cmd tea.Cmd
-		m.spinner, cmd = m.spinner.Update(msg)
-		return m, cmd
+
+	case spinner.TickMsg:
+		s, cmd := m.spinner.Update(msg)
+		m.spinner = s
+		cmds = append(cmds, cmd)
 	}
+
+	return m, tea.Batch(cmds...)
 }
 
 func (m Model) View() string {
