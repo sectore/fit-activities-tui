@@ -1,28 +1,24 @@
-package fit
+package tui
 
 import (
 	"fmt"
 	"strconv"
 	"strings"
-	"time"
 
-	"github.com/muktihari/fit/profile/filedef"
+	"github.com/sectore/fit-sum-tui/internal/asyncdata"
+	"github.com/sectore/fit-sum-tui/internal/common"
 )
 
-func GetLocalTime(act *filedef.Activity) time.Time {
-	return act.Activity.Timestamp
-}
-
-func GetTotalDistance(act *filedef.Activity) uint32 {
+func GetTotalDistance(data common.ActivityData) uint32 {
 	var dist uint32 = 0
-	for _, rec := range act.Records {
-		dist += rec.Distance
+	for _, d := range data.Distances {
+		dist += d
 	}
 	return dist
 }
 
-func FormatTotalDistance(act *filedef.Activity) string {
-	var meters = GetTotalDistance(act) / 100 / 1000
+func FormatTotalDistance(data common.ActivityData) string {
+	var meters = GetTotalDistance(data) / 100 / 1000
 	if meters >= 1000 {
 		km := float64(meters) / 1000
 		formatted := fmt.Sprintf("%.3f", km)
@@ -35,12 +31,8 @@ func FormatTotalDistance(act *filedef.Activity) string {
 
 }
 
-func GetTotalTime(act *filedef.Activity) uint32 {
-	return act.Activity.TotalTimerTime
-}
-
-func FormatTotalTime(act *filedef.Activity) string {
-	seconds := int(GetTotalTime(act) / 1000)
+func FormatTotalTime(data common.ActivityData) string {
+	seconds := int(data.TotalTime / 1000)
 	if seconds < 60 {
 		// Format as ss
 		return strconv.Itoa(seconds)
@@ -66,4 +58,33 @@ func FormatTotalTime(act *filedef.Activity) string {
 		seconds = remainingSeconds % 60
 		return fmt.Sprintf("%d:%02d:%02d:%02d", days, hours, minutes, seconds)
 	}
+}
+
+func ActivitiesAreLoading(acts []common.Activity) bool {
+	for _, act := range acts {
+		if asyncdata.IsLoading(act.Data) {
+			return true
+		}
+	}
+	return false
+}
+
+func ActivitiesSuccess(acts []common.Activity) int {
+	count := 0
+	for _, act := range acts {
+		if asyncdata.IsSuccess(act.Data) {
+			count += 1
+		}
+	}
+	return count
+}
+
+func ActivitiesFailures(acts []common.Activity) int {
+	count := 0
+	for _, act := range acts {
+		if asyncdata.IsFailure(act.Data) {
+			count += 1
+		}
+	}
+	return count
 }

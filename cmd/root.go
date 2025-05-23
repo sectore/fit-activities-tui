@@ -26,11 +26,10 @@ var rootCmd = &cobra.Command{
 			tui.InitialModel(path),
 			tea.WithAltScreen(),
 		)
-		model, err := program.Run()
+		_, err := program.Run()
 		if err != nil {
 			return fmt.Errorf("Could not run program: %v", err)
 		}
-		fmt.Printf("TUI exited -> state -> %v", model)
 
 		return nil
 

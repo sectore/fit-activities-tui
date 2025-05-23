@@ -11,6 +11,8 @@ type AsyncData[E error, A any] struct {
 	state state
 }
 
+// type Option func(o *options)
+
 type state interface {
 	isAsyncDataState()
 }
@@ -34,7 +36,7 @@ type loading[A any] struct {
 
 func (loading[A]) isAsyncDataState() {}
 
-func NewLoading[E error, A any](prevData *A) AsyncData[E, A] {
+func Loading[E error, A any](prevData *A) AsyncData[E, A] {
 	return AsyncData[E, A]{state: loading[A]{PrevData: prevData}}
 }
 

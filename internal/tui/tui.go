@@ -2,34 +2,39 @@ package tui
 
 import (
 	"fmt"
+	"time"
 
+	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/muktihari/fit/profile/filedef"
+	"github.com/sectore/fit-sum-tui/internal/asyncdata"
+	"github.com/sectore/fit-sum-tui/internal/common"
 	"github.com/sectore/fit-sum-tui/internal/fit"
 )
 
 type Model struct {
 	importPath       string
-	files            []string
-	activities       []*filedef.Activity
+	activities       []common.Activity
 	errMsgs          []error
 	selectedFile     string
 	currentFileIndex int
+	spinner          spinner.Model
 }
 
 func InitialModel(path string) Model {
+	s := spinner.New()
+	s.Spinner = spinner.Dot
 	return Model{
 		importPath:       path,
-		files:            nil,
 		activities:       nil,
 		selectedFile:     "",
 		currentFileIndex: 0,
+		spinner:          s,
 	}
 }
 
 func (m Model) Init() tea.Cmd {
-	return getFilesCmd(m.importPath)
+	return tea.Batch(getFilesCmd(m.importPath), m.spinner.Tick)
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -43,26 +48,34 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 	case filesMsg:
-		m.files = msg
-		return m, parseFileCmd(msg[0])
+		var activities []common.Activity
+		for _, path := range msg {
+			activities = append(activities, common.Activity{
+				Path: path,
+				Data: asyncdata.NotAsked[error, common.ActivityData](),
+			})
+		}
+		m.activities = activities
+		m.activities[0].Data = common.ActivityLoading(nil)
+		return m, parseFileCmd(m.activities[0])
 
 	case parseFileResultMsg:
-		m.activities = append(m.activities, msg)
-		if m.currentFileIndex < len(m.files)-1 {
+		m.activities[m.currentFileIndex] = msg.activity
+		if m.currentFileIndex < len(m.activities)-1 {
 			m.currentFileIndex++
-			return m, parseFileCmd(m.files[m.currentFileIndex])
+			m.activities[m.currentFileIndex].Data = common.ActivityLoading(nil)
+			return m, parseFileCmd(m.activities[m.currentFileIndex])
 		}
-		return m, nil
-
-	case activitiesMsg:
-		m.activities = msg
 		return m, nil
 
 	case errMsg:
 		m.errMsgs = append(m.errMsgs, msg)
 		return m, nil
+	default:
+		var cmd tea.Cmd
+		m.spinner, cmd = m.spinner.Update(msg)
+		return m, cmd
 	}
-	return m, nil
 }
 
 func (m Model) View() string {
@@ -73,7 +86,19 @@ func (m Model) View() string {
 	var hs = lipgloss.NewStyle().
 		Border(lipgloss.ThickBorder(), true).PaddingLeft(2).PaddingRight(2).MarginBottom(1)
 
-	s += hs.Render(fmt.Sprintf("parse %d/%d FIT files", m.currentFileIndex+1, len(m.files)))
+	loading := "  "
+	if ActivitiesAreLoading(m.activities) {
+		loading = m.spinner.View()
+	}
+
+	s += hs.Render(
+		fmt.Sprintf("%s parse %d/%d FIT files (%d errors)",
+			loading,
+			ActivitiesSuccess(m.activities)+ActivitiesFailures(m.activities),
+			len(m.activities),
+			ActivitiesFailures(m.activities),
+		),
+	)
 
 	s += "\n"
 
@@ -88,11 +113,16 @@ func (m Model) View() string {
 
 	var a string
 	for i, act := range m.activities {
-		a += fmt.Sprintf("(%d) %s %s %s \n",
-			i+1,
-			fit.GetLocalTime(act).Format("2006-01-02 15:04"),
-			fit.FormatTotalTime(act),
-			fit.FormatTotalDistance(act))
+		data, ok := asyncdata.GetSuccess(act.Data)
+		if ok {
+
+			a += fmt.Sprintf("(%d) %s %s %s \n",
+				i+1,
+				data.LocalTime.Format("2006-01-02 15:04"),
+				FormatTotalTime(data),
+				FormatTotalDistance(data))
+		}
+
 	}
 	s += ls.Render(a)
 
@@ -100,8 +130,7 @@ func (m Model) View() string {
 }
 
 type filesMsg []string
-type activitiesMsg []*filedef.Activity
-type parseFileResultMsg *filedef.Activity
+type parseFileResultMsg struct{ activity common.Activity }
 
 type errMsg struct{ err error }
 
@@ -118,18 +147,21 @@ func getFilesCmd(path string) tea.Cmd {
 	}
 }
 
-func parseFileCmd(file string) tea.Cmd {
+func parseFileCmd(act common.Activity) tea.Cmd {
 	return func() tea.Msg {
 		// channel to send result msg
 		resultCh := make(chan tea.Msg, 1)
 		// goroutine to do the parsing
 		go func() {
-			act, err := fit.ParseFile(file)
+			data, err := fit.ParseFile(act.Path)
 			if err != nil {
-				resultCh <- errMsg{err}
+				act.Data = common.ActivityFailure(err)
 			} else {
-				resultCh <- parseFileResultMsg(act)
+				act.Data = common.ActivitySuccess(*data)
 			}
+			// FIXME: for debugging only
+			time.Sleep(100 * time.Millisecond)
+			resultCh <- parseFileResultMsg{act}
 			close(resultCh)
 		}()
 		// return result msg
