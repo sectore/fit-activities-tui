@@ -10,19 +10,21 @@ import (
 )
 
 type Model struct {
-	importPath   string
-	files        []string
-	activities   []*filedef.Activity
-	errMsgs      []error
-	selectedFile string
+	importPath       string
+	files            []string
+	activities       []*filedef.Activity
+	errMsgs          []error
+	selectedFile     string
+	currentFileIndex int
 }
 
 func InitialModel(path string) Model {
 	return Model{
-		importPath:   path,
-		files:        nil,
-		activities:   nil,
-		selectedFile: "",
+		importPath:       path,
+		files:            nil,
+		activities:       nil,
+		selectedFile:     "",
+		currentFileIndex: 0,
 	}
 }
 
@@ -42,7 +44,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case filesMsg:
 		m.files = msg
-		return m, parseFilesCmd(msg)
+		return m, parseFileCmd(msg[0])
+
+	case parseFileResultMsg:
+		m.activities = append(m.activities, msg)
+		if m.currentFileIndex < len(m.files)-1 {
+			m.currentFileIndex++
+			return m, parseFileCmd(m.files[m.currentFileIndex])
+		}
+		return m, nil
 
 	case activitiesMsg:
 		m.activities = msg
@@ -63,9 +73,10 @@ func (m Model) View() string {
 	var hs = lipgloss.NewStyle().
 		Border(lipgloss.ThickBorder(), true).PaddingLeft(2).PaddingRight(2).MarginBottom(1)
 
-	s += hs.Render(fmt.Sprintf("%d FIT files", len(m.files)))
+	s += hs.Render(fmt.Sprintf("parse %d/%d FIT files", m.currentFileIndex+1, len(m.files)))
 
 	s += "\n"
+
 	// errorStyle
 	var es = lipgloss.NewStyle().Foreground(lipgloss.Color("#F25D94"))
 
@@ -74,14 +85,6 @@ func (m Model) View() string {
 	}
 	// list style
 	var ls = lipgloss.NewStyle().Padding(0).Margin(0)
-
-	var f string
-	for i, file := range m.files {
-		f += fmt.Sprintf("(%d) %s \n", i+1, file)
-	}
-	s += ls.Render(f)
-
-	s += fmt.Sprintf("no acts (%d) \n", len(m.activities))
 
 	var a string
 	for i, act := range m.activities {
@@ -98,6 +101,7 @@ func (m Model) View() string {
 
 type filesMsg []string
 type activitiesMsg []*filedef.Activity
+type parseFileResultMsg *filedef.Activity
 
 type errMsg struct{ err error }
 
@@ -114,13 +118,21 @@ func getFilesCmd(path string) tea.Cmd {
 	}
 }
 
-func parseFilesCmd(files []string) tea.Cmd {
+func parseFileCmd(file string) tea.Cmd {
 	return func() tea.Msg {
-		activities, err := fit.ParseFiles(files)
-		if err != nil {
-			return errMsg{err}
-		}
-		return activitiesMsg(activities)
-
+		// channel to send result msg
+		resultCh := make(chan tea.Msg, 1)
+		// goroutine to do the parsing
+		go func() {
+			act, err := fit.ParseFile(file)
+			if err != nil {
+				resultCh <- errMsg{err}
+			} else {
+				resultCh <- parseFileResultMsg(act)
+			}
+			close(resultCh)
+		}()
+		// return result msg
+		return <-resultCh
 	}
 }

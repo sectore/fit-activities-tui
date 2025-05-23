@@ -16,17 +16,7 @@ func New(files []string) Parser {
 	return Parser{files}
 }
 
-func ParseFiles(files []string) ([]*filedef.Activity, error) {
-	var activities []*filedef.Activity
-	for _, file := range files {
-		if act, err := parseFile(file); err == nil {
-			activities = append(activities, act)
-		}
-	}
-	return activities, nil
-}
-
-func parseFile(file string) (*filedef.Activity, error) {
+func ParseFile(file string) (*filedef.Activity, error) {
 	f, err := os.Open(file)
 	if err != nil {
 		return nil, err
