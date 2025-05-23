@@ -7,9 +7,9 @@ import (
 	"strings"
 )
 
-func IsFitFile(fileName string) bool {
-	return !strings.HasPrefix(fileName, ".") &&
-		strings.HasSuffix(fileName, ".fit")
+func IsFitFile(file os.FileInfo) bool {
+	return file.Mode().IsRegular() &&
+		strings.HasSuffix(file.Name(), ".fit")
 }
 
 func GetFitFiles(path string) ([]string, error) {
@@ -24,12 +24,14 @@ func GetFitFiles(path string) ([]string, error) {
 			return nil, err
 		}
 		for _, file := range files {
-			if !file.IsDir() && IsFitFile(file.Name()) {
+			if fileInfo, err := file.Info(); err == nil && !file.IsDir() && IsFitFile(fileInfo) {
 				fitFiles = append(fitFiles, filepath.Join(path, file.Name()))
 			}
 		}
 	} else {
-		fitFiles = append(fitFiles, path)
+		if IsFitFile(fileInfo) {
+			fitFiles = append(fitFiles, path)
+		}
 	}
 
 	return fitFiles, nil
