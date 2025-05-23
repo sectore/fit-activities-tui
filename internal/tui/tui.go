@@ -49,12 +49,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 	case filesMsg:
-		var activities []common.Activity
-		for _, path := range msg {
-			activities = append(activities, common.Activity{
+		activities := make([]common.Activity, len(msg))
+		for i, path := range msg {
+			activities[i] = common.Activity{
 				Path: path,
 				Data: asyncdata.NotAsked[error, common.ActivityData](),
-			})
+			}
 		}
 		m.activities = activities
 		m.activities[0].Data = common.ActivityLoading(nil)

@@ -11,8 +11,6 @@ type AsyncData[E error, A any] struct {
 	state state
 }
 
-// type Option func(o *options)
-
 type state interface {
 	isAsyncDataState()
 }
