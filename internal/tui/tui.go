@@ -41,10 +41,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "q", "esc", "ctrl+c":
 			return m, tea.Quit
 		case "down":
-			m.activities.Next()
+			if !ActivitiesParsing(m.activities) {
+				m.activities.Next()
+			}
 			return m, nil
 		case "up":
-			m.activities.Prev()
+			if !ActivitiesParsing(m.activities) {
+				m.activities.Prev()
+			}
 			return m, nil
 		case " ":
 			if act, ok := m.activities.CurrentAct(); ok {
@@ -71,7 +75,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case parseFileResultMsg:
 		if !m.activities.IsLastIndex() {
-			if act, ok := m.activities.Next(); ok == true {
+			if act, ok := m.activities.Next(); ok {
 				act.Data = common.ActivityLoading(nil)
 				cmds = append(cmds, parseFileCmd(act))
 			}
@@ -97,21 +101,20 @@ func (m Model) View() string {
 
 	// headlien style
 	var hs = lipgloss.NewStyle().
-		Border(lipgloss.InnerHalfBlockBorder(), true).PaddingLeft(2).PaddingRight(2)
+		Border(lipgloss.InnerHalfBlockBorder(), true).Padding(1).PaddingTop(0).PaddingBottom(0)
 
 	loading := "  "
-	if ActivitiesAreLoading(m.activities) {
+	if ActivitiesParsing(m.activities) {
 		loading = m.spinner.View()
 	}
 
 	s += hs.Render(
-		fmt.Sprintf("%s %d/%d FIT files (%d errors) index %d length %d",
+		fmt.Sprintf("%s %d/%d FIT files (%d errors) i=%d",
 			loading,
-			ActivitiesSuccess(m.activities)+ActivitiesFailures(m.activities),
+			ActivitiesParsed(m.activities)+ActivitiesFailures(m.activities),
 			len(m.activities.All()),
 			ActivitiesFailures(m.activities),
 			m.activities.CurrentIndex(),
-			len(m.activities.All()),
 		),
 	)
 
