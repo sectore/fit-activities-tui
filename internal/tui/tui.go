@@ -49,14 +49,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if !ActivitiesParsing(m.activities) {
 				m.activities.Prev()
 			}
-			return m, nil
 		case " ":
 			if act, ok := m.activities.CurrentAct(); ok {
 				act.Toggle()
 			}
-			return m, nil
-		default:
-			return m, nil
 		}
 
 	case getFilesResultMsg:
@@ -89,7 +85,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case spinner.TickMsg:
 		s, cmd := m.spinner.Update(msg)
 		m.spinner = s
-		cmds = append(cmds, cmd)
+		if ActivitiesParsing(m.activities) {
+			cmds = append(cmds, cmd)
+		}
 	}
 
 	return m, tea.Batch(cmds...)
