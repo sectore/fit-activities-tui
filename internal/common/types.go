@@ -28,70 +28,75 @@ func ActivitySuccess(data ActivityData) ActivityAD {
 
 type Activity struct {
 	Path     string
-	Selected bool
+	selected bool
 	Data     ActivityAD
 }
 
+func (act *Activity) Toggle() {
+	act.selected = !act.selected
+}
+
+func (act Activity) IsSelected() bool {
+	return act.selected
+}
+
 type Activities struct {
+	index uint
 	inner []Activity
 }
 
-// Set / get `next` selected `Activity` from `Activities`
-func (m Activities) Next() (*Activity, bool) {
-	// ignore empty lists
-	if len(m.inner) == 0 {
-		return nil, false
-	}
-
-	for i, act := range m.inner {
-		if act.Selected {
-			// unselect current
-			m.inner[i].Selected = false
-			// select next
-			next := (i + 1) % len(m.inner)
-			m.inner[next].Selected = true
-			return &m.inner[next], true
-		}
-	}
-	// In case no `Activity` was selected, select first
-	m.inner[0].Selected = true
-	return &m.inner[0], true
+func NewActivities(acts []Activity) Activities {
+	return Activities{inner: acts, index: 0}
 }
 
-// Set / get `prev` selected `Activity` from `Activities`
-func (m Activities) Prev() (*Activity, bool) {
-	// ignore empty lists
-	if len(m.inner) == 0 {
-		return nil, false
-	}
-
-	for i, act := range m.inner {
-		if act.Selected {
-			// unselect current
-			m.inner[i].Selected = false
-			// select prev
-			prev := (i + len(m.inner) - 1) % len(m.inner)
-			m.inner[prev].Selected = true
-			return &m.inner[prev], true
-		}
-	}
-	// In case no `Activity` was selected, select first
-	m.inner[0].Selected = true
-	return &m.inner[0], true
+func (acts Activities) All() []Activity {
+	return acts.inner
 }
 
-// Set / get `prev` selected `Activity` from `Activities`
-func (m Activities) Current() (*Activity, bool) {
-	// ignore empty lists
-	if len(m.inner) == 0 {
+func (acts *Activities) Next() (*Activity, bool) {
+	var l = uint(len(acts.inner))
+	// empty lists
+	if l == 0 {
 		return nil, false
 	}
+	acts.index = (acts.index + 1) % l
+	return &acts.inner[acts.index], true
+}
 
-	for _, act := range m.inner {
-		if act.Selected {
-			return &act, true
-		}
+func (acts *Activities) Prev() (*Activity, bool) {
+	var l = uint(len(acts.inner))
+	// empty lists
+	if l == 0 {
+		return nil, false
 	}
+	acts.index = (acts.index + l - 1) % l
+	return &acts.inner[acts.index], true
+}
 
-	return nil, true
+func (acts Activities) IsLastIndex() bool {
+	var l = uint(len(acts.inner))
+	if l == 0 {
+		return true
+	}
+	return acts.index >= l-1
+}
+
+func (acts *Activities) FirstIndex() {
+	acts.index = 0
+}
+
+func (acts Activities) IsFirstIndex() bool {
+	return acts.index == 0
+}
+
+func (acts Activities) CurrentIndex() uint {
+	return acts.index
+}
+
+func (acts *Activities) CurrentAct() (*Activity, bool) {
+	// empty lists
+	if len(acts.inner) == 0 {
+		return nil, false
+	}
+	return &acts.inner[acts.index], true
 }

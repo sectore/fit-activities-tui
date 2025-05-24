@@ -13,23 +13,19 @@ import (
 )
 
 type Model struct {
-	importPath       string
-	activities       []common.Activity
-	errMsgs          []error
-	selectedFile     string
-	currentFileIndex int
-	spinner          spinner.Model
+	importPath string
+	activities common.Activities
+	errMsgs    []error
+	spinner    spinner.Model
 }
 
 func InitialModel(path string) Model {
 	s := spinner.New()
 	s.Spinner = spinner.Dot
 	return Model{
-		importPath:       path,
-		activities:       nil,
-		selectedFile:     "",
-		currentFileIndex: 0,
-		spinner:          s,
+		importPath: path,
+		activities: common.Activities{},
+		spinner:    s,
 	}
 }
 
@@ -44,11 +40,22 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.String() {
 		case "q", "esc", "ctrl+c":
 			return m, tea.Quit
+		case "down":
+			m.activities.Next()
+			return m, nil
+		case "up":
+			m.activities.Prev()
+			return m, nil
+		case " ":
+			if act, ok := m.activities.CurrentAct(); ok {
+				act.Toggle()
+			}
+			return m, nil
 		default:
 			return m, nil
 		}
 
-	case filesMsg:
+	case getFilesResultMsg:
 		activities := make([]common.Activity, len(msg))
 		for i, path := range msg {
 			activities[i] = common.Activity{
@@ -56,16 +63,20 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				Data: asyncdata.NotAsked[error, common.ActivityData](),
 			}
 		}
-		m.activities = activities
-		m.activities[0].Data = common.ActivityLoading(nil)
-		cmds = append(cmds, parseFileCmd(m.activities[0]))
+		m.activities = common.NewActivities(activities)
+		if act, ok := m.activities.CurrentAct(); ok {
+			act.Data = common.ActivityLoading(nil)
+			cmds = append(cmds, parseFileCmd(act))
+		}
 
 	case parseFileResultMsg:
-		m.activities[m.currentFileIndex] = msg.activity
-		if m.currentFileIndex < len(m.activities)-1 {
-			m.currentFileIndex++
-			m.activities[m.currentFileIndex].Data = common.ActivityLoading(nil)
-			cmds = append(cmds, parseFileCmd(m.activities[m.currentFileIndex]))
+		if !m.activities.IsLastIndex() {
+			if act, ok := m.activities.Next(); ok == true {
+				act.Data = common.ActivityLoading(nil)
+				cmds = append(cmds, parseFileCmd(act))
+			}
+		} else {
+			m.activities.FirstIndex()
 		}
 
 	case errMsg:
@@ -86,7 +97,7 @@ func (m Model) View() string {
 
 	// headlien style
 	var hs = lipgloss.NewStyle().
-		Border(lipgloss.ThickBorder(), true).PaddingLeft(2).PaddingRight(2).MarginBottom(1)
+		Border(lipgloss.InnerHalfBlockBorder(), true).PaddingLeft(2).PaddingRight(2)
 
 	loading := "  "
 	if ActivitiesAreLoading(m.activities) {
@@ -94,15 +105,15 @@ func (m Model) View() string {
 	}
 
 	s += hs.Render(
-		fmt.Sprintf("%s parse %d/%d FIT files (%d errors)",
+		fmt.Sprintf("%s %d/%d FIT files (%d errors) index %d length %d",
 			loading,
 			ActivitiesSuccess(m.activities)+ActivitiesFailures(m.activities),
-			len(m.activities),
+			len(m.activities.All()),
 			ActivitiesFailures(m.activities),
+			m.activities.CurrentIndex(),
+			len(m.activities.All()),
 		),
 	)
-
-	s += "\n"
 
 	// errorStyle
 	var es = lipgloss.NewStyle().Foreground(lipgloss.Color("#F25D94"))
@@ -111,28 +122,29 @@ func (m Model) View() string {
 		s += es.Render(fmt.Sprintf("%s\n", err))
 	}
 	// list style
-	var ls = lipgloss.NewStyle().Padding(0).Margin(0)
+	var ls = lipgloss.NewStyle().MarginTop(1)
+	var lss = ls.Background(lipgloss.Color("10"))
 
-	var a string
-	for i, act := range m.activities {
-		data, ok := asyncdata.GetSuccess(act.Data)
-		if ok {
-
-			a += fmt.Sprintf("(%d) %s %s %s \n",
+	for i, act := range m.activities.All() {
+		if data, ok := asyncdata.GetSuccess(act.Data); ok {
+			text := fmt.Sprintf("(%d) %s %s %s",
 				i+1,
 				data.LocalTime.Format("2006-01-02 15:04"),
 				FormatTotalTime(data),
 				FormatTotalDistance(data))
+			if act.IsSelected() {
+				s += lss.Render(text)
+			} else {
+				s += ls.Render(text)
+			}
 		}
-
 	}
-	s += ls.Render(a)
 
 	return s
 }
 
-type filesMsg []string
-type parseFileResultMsg struct{ activity common.Activity }
+type getFilesResultMsg []string
+type parseFileResultMsg struct{}
 
 type errMsg struct{ err error }
 
@@ -144,12 +156,12 @@ func getFilesCmd(path string) tea.Cmd {
 		if err != nil {
 			return errMsg{err}
 		}
-		return filesMsg(files)
+		return getFilesResultMsg(files)
 
 	}
 }
 
-func parseFileCmd(act common.Activity) tea.Cmd {
+func parseFileCmd(act *common.Activity) tea.Cmd {
 	return func() tea.Msg {
 		// channel to send result msg
 		resultCh := make(chan tea.Msg, 1)
@@ -163,7 +175,7 @@ func parseFileCmd(act common.Activity) tea.Cmd {
 			}
 			// FIXME: for debugging only
 			time.Sleep(100 * time.Millisecond)
-			resultCh <- parseFileResultMsg{act}
+			resultCh <- parseFileResultMsg{}
 			close(resultCh)
 		}()
 		// return result msg
