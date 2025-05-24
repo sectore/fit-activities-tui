@@ -19,11 +19,11 @@ type notAsked struct{}
 
 func (notAsked) isAsyncDataState() {}
 
-func NotAsked[E error, A any]() AsyncData[E, A] {
+func NewNotAsked[E error, A any]() AsyncData[E, A] {
 	return AsyncData[E, A]{state: notAsked{}}
 }
 
-func IsNotAsked[E error, A any](ad AsyncData[E, A]) bool {
+func NotAsked[E error, A any](ad AsyncData[E, A]) bool {
 	_, ok := ad.state.(notAsked)
 	return ok
 }
@@ -34,13 +34,18 @@ type loading[A any] struct {
 
 func (loading[A]) isAsyncDataState() {}
 
-func Loading[E error, A any](prevData *A) AsyncData[E, A] {
+func NewLoading[E error, A any](prevData *A) AsyncData[E, A] {
 	return AsyncData[E, A]{state: loading[A]{PrevData: prevData}}
 }
 
-func IsLoading[E error, A any](ad AsyncData[E, A]) bool {
-	_, ok := ad.state.(loading[A])
-	return ok
+func Loading[E error, A any](ad AsyncData[E, A]) (*A, bool, bool) {
+	if value, ok := ad.state.(loading[A]); ok {
+		if value.PrevData != nil {
+			return value.PrevData, true, true
+		}
+		return nil, false, true
+	}
+	return nil, false, false
 }
 
 type failure[E error] struct {
@@ -49,22 +54,15 @@ type failure[E error] struct {
 
 func (failure[E]) isAsyncDataState() {}
 
-func Failure[E error, A any](err E) AsyncData[E, A] {
+func NewFailure[E error, A any](err E) AsyncData[E, A] {
 	return AsyncData[E, A]{state: failure[E]{Error: err}}
 }
 
-func IsFailure[E error, A any](ad AsyncData[E, A]) bool {
-	_, ok := ad.state.(failure[E])
-	return ok
-}
-
-func GetFailure[E error, A any](ad AsyncData[E, A]) (E, bool) {
-	err, ok := ad.state.(failure[E])
-	if !ok {
-		var zero E
-		return zero, false
+func Failure[E error, A any](ad AsyncData[E, A]) (*E, bool) {
+	if err, ok := ad.state.(failure[E]); ok {
+		return &err.Error, true
 	}
-	return err.Error, true
+	return nil, false
 }
 
 type success[A any] struct {
@@ -73,22 +71,16 @@ type success[A any] struct {
 
 func (success[A]) isAsyncDataState() {}
 
-func Success[E error, A any](data A) AsyncData[E, A] {
+func NewSuccess[E error, A any](data A) AsyncData[E, A] {
 	return AsyncData[E, A]{state: success[A]{Data: data}}
 }
 
-func IsSuccess[E error, A any](ad AsyncData[E, A]) bool {
-	_, ok := ad.state.(success[A])
-	return ok
-}
-
-func GetSuccess[E error, A any](ad AsyncData[E, A]) (A, bool) {
-	succ, ok := ad.state.(success[A])
-	if !ok {
-		var zero A
-		return zero, false
+func Success[E error, A any](ad AsyncData[E, A]) (*A, bool) {
+	if succ, ok := ad.state.(success[A]); ok {
+		return &succ.Data, true
 	}
-	return succ.Data, true
+	return nil, false
+
 }
 
 func Map[E error, A any, B any](ad AsyncData[E, A], f func(A) B) AsyncData[E, B] {

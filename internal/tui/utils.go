@@ -62,7 +62,9 @@ func FormatTotalTime(data common.ActivityData) string {
 
 func ActivitiesParsing(acts common.Activities) bool {
 	for _, act := range acts.All() {
-		if asyncdata.IsLoading(act.Data) || asyncdata.IsNotAsked(act.Data) {
+		_, _, loading := asyncdata.Loading(act.Data)
+		notAsked := asyncdata.NotAsked(act.Data)
+		if loading || notAsked {
 			return true
 		}
 	}
@@ -72,7 +74,7 @@ func ActivitiesParsing(acts common.Activities) bool {
 func ActivitiesParsed(acts common.Activities) int {
 	count := 0
 	for _, act := range acts.All() {
-		if asyncdata.IsSuccess(act.Data) {
+		if _, ok := asyncdata.Success(act.Data); ok {
 			count += 1
 		}
 	}
@@ -82,7 +84,7 @@ func ActivitiesParsed(acts common.Activities) int {
 func ActivitiesFailures(acts common.Activities) int {
 	count := 0
 	for _, act := range acts.All() {
-		if asyncdata.IsFailure(act.Data) {
+		if _, ok := asyncdata.Failure(act.Data); ok {
 			count += 1
 		}
 	}
