@@ -33,15 +33,15 @@ func ParseFile(file string) (*common.ActivityData, error) {
 		return nil, errors.New("expected an Activity")
 	}
 
-	distances := make([]uint32, len(act.Records))
-	for i, rec := range act.Records {
-		distances[i] = rec.Distance
+	distances := make([]uint32, len(act.Sessions))
+	for i, sess := range act.Sessions {
+		distances[i] = sess.TotalDistance
 	}
 
 	var ad = common.ActivityData{
-		LocalTime: act.Activity.Timestamp,
-		TotalTime: act.Activity.TotalTimerTime,
-		Distances: distances,
+		LocalTime:      act.Activity.LocalTimestamp,
+		TotalTime:      act.Activity.TotalTimerTime,
+		TotalDistances: distances,
 	}
 
 	return &ad, nil

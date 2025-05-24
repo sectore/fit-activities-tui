@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -17,15 +18,21 @@ type Model struct {
 	activities common.Activities
 	errMsgs    []error
 	spinner    spinner.Model
+	list       list.Model
 }
 
 func InitialModel(path string) Model {
+
 	s := spinner.New()
 	s.Spinner = spinner.Dot
+
+	list := list.New([]list.Item{}, list.NewDefaultDelegate(), 0, 0)
+
 	return Model{
 		importPath: path,
 		activities: common.Activities{},
 		spinner:    s,
+		list:       list,
 	}
 }
 
@@ -36,23 +43,15 @@ func (m Model) Init() tea.Cmd {
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 	switch msg := msg.(type) {
+
+	case tea.WindowSizeMsg:
+		h, v := appStyle.GetFrameSize()
+		m.list.SetSize(msg.Width-h, msg.Height-v-6)
+
 	case tea.KeyMsg:
 		switch msg.String() {
-		case "q", "esc", "ctrl+c":
+		case "q":
 			return m, tea.Quit
-		case "down":
-			if !ActivitiesParsing(m.activities) {
-				m.activities.Next()
-			}
-			return m, nil
-		case "up":
-			if !ActivitiesParsing(m.activities) {
-				m.activities.Prev()
-			}
-		case " ":
-			if act, ok := m.activities.CurrentAct(); ok {
-				act.Toggle()
-			}
 		}
 
 	case getFilesResultMsg:
@@ -64,13 +63,22 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 		m.activities = common.NewActivities(activities)
+
+		items := make([]list.Item, len(msg))
+		m.list.SetItems(items)
+
 		if act, ok := m.activities.CurrentAct(); ok {
 			act.Data = asyncdata.NewLoading[error, common.ActivityData](nil)
 			cmds = append(cmds, parseFileCmd(act))
 		}
 
 	case parseFileResultMsg:
+		current := m.activities.CurrentIndex()
+		if cAct, ok := m.activities.CurrentAct(); ok {
+			m.list.SetItem(int(current), cAct)
+		}
 		if !m.activities.IsLastIndex() {
+
 			if act, ok := m.activities.Next(); ok {
 				act.Data = asyncdata.NewLoading[error, common.ActivityData](nil)
 				cmds = append(cmds, parseFileCmd(act))
@@ -88,16 +96,32 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, cmd)
 	}
 
+	newListModel, cmd := m.list.Update(msg)
+	m.list = newListModel
+	cmds = append(cmds, cmd)
+
 	return m, tea.Batch(cmds...)
 }
 
+var (
+	appStyle          = lipgloss.NewStyle().Padding(1, 2)
+	titleStyle        = lipgloss.NewStyle().MarginLeft(2)
+	itemStyle         = lipgloss.NewStyle().PaddingLeft(4)
+	selectedItemStyle = lipgloss.NewStyle().PaddingLeft(2).Foreground(lipgloss.Color("170"))
+)
+
 func (m Model) View() string {
 
-	s := fmt.Sprintf("path: %s\n", m.importPath)
+	s := m.list.View()
 
-	// headlien style
+	s += "\n"
+
+	// headline style
 	var hs = lipgloss.NewStyle().
-		Border(lipgloss.InnerHalfBlockBorder(), true).Padding(1).PaddingTop(0).PaddingBottom(0)
+		PaddingLeft(1).
+		PaddingRight(3).
+		MarginLeft(2).
+		Border(lipgloss.NormalBorder(), true, false)
 
 	loading := "  "
 	if ActivitiesParsing(m.activities) {
@@ -113,6 +137,11 @@ func (m Model) View() string {
 			m.activities.CurrentIndex(),
 		),
 	)
+	s += "\n"
+	s += lipgloss.NewStyle().
+		PaddingLeft(2).
+		Render(fmt.Sprintf("%s", m.importPath))
+	s += "\n"
 
 	// errorStyle
 	var es = lipgloss.NewStyle().Foreground(lipgloss.Color("#F25D94"))
@@ -120,26 +149,10 @@ func (m Model) View() string {
 	for _, err := range m.errMsgs {
 		s += es.Render(fmt.Sprintf("%s\n", err))
 	}
-	// list style
-	var ls = lipgloss.NewStyle().MarginTop(1)
-	var lss = ls.Background(lipgloss.Color("10"))
 
-	for i, act := range m.activities.All() {
-		if data, ok := asyncdata.Success(act.Data); ok {
-			text := fmt.Sprintf("(%d) %s %s %s",
-				i+1,
-				data.LocalTime.Format("2006-01-02 15:04"),
-				FormatTotalTime(*data),
-				FormatTotalDistance(*data))
-			if act.IsSelected() {
-				s += lss.Render(text)
-			} else {
-				s += ls.Render(text)
-			}
-		}
-	}
+	s += "\n"
 
-	return s
+	return appStyle.Render(s)
 }
 
 type getFilesResultMsg []string
