@@ -60,7 +60,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		for i, path := range msg {
 			activities[i] = common.Activity{
 				Path: path,
-				Data: asyncdata.NotAsked[error, common.ActivityData](),
+				Data: asyncdata.NewNotAsked[error, common.ActivityData](),
 			}
 		}
 		m.activities = common.NewActivities(activities)
@@ -85,9 +85,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case spinner.TickMsg:
 		s, cmd := m.spinner.Update(msg)
 		m.spinner = s
-		if ActivitiesParsing(m.activities) {
-			cmds = append(cmds, cmd)
-		}
+		cmds = append(cmds, cmd)
 	}
 
 	return m, tea.Batch(cmds...)
@@ -127,12 +125,12 @@ func (m Model) View() string {
 	var lss = ls.Background(lipgloss.Color("10"))
 
 	for i, act := range m.activities.All() {
-		if data, ok := asyncdata.GetSuccess(act.Data); ok {
+		if data, ok := asyncdata.Success(act.Data); ok {
 			text := fmt.Sprintf("(%d) %s %s %s",
 				i+1,
 				data.LocalTime.Format("2006-01-02 15:04"),
-				FormatTotalTime(data),
-				FormatTotalDistance(data))
+				FormatTotalTime(*data),
+				FormatTotalDistance(*data))
 			if act.IsSelected() {
 				s += lss.Render(text)
 			} else {

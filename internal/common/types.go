@@ -15,15 +15,15 @@ type ActivityData struct {
 type ActivityAD = asyncdata.AsyncData[error, ActivityData]
 
 func ActivityLoading(prevData *ActivityData) ActivityAD {
-	return asyncdata.Loading[error, ActivityData](prevData)
+	return asyncdata.NewLoading[error, ActivityData](prevData)
 }
 
 func ActivityFailure(err error) ActivityAD {
-	return asyncdata.Failure[error, ActivityData](err)
+	return asyncdata.NewFailure[error, ActivityData](err)
 }
 
 func ActivitySuccess(data ActivityData) ActivityAD {
-	return asyncdata.Success[error, ActivityData](data)
+	return asyncdata.NewSuccess[error, ActivityData](data)
 }
 
 type Activity struct {
