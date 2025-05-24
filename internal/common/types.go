@@ -14,18 +14,6 @@ type ActivityData struct {
 
 type ActivityAD = asyncdata.AsyncData[error, ActivityData]
 
-func ActivityLoading(prevData *ActivityData) ActivityAD {
-	return asyncdata.NewLoading[error, ActivityData](prevData)
-}
-
-func ActivityFailure(err error) ActivityAD {
-	return asyncdata.NewFailure[error, ActivityData](err)
-}
-
-func ActivitySuccess(data ActivityData) ActivityAD {
-	return asyncdata.NewSuccess[error, ActivityData](data)
-}
-
 type Activity struct {
 	Path     string
 	selected bool

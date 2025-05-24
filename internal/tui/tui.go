@@ -65,14 +65,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.activities = common.NewActivities(activities)
 		if act, ok := m.activities.CurrentAct(); ok {
-			act.Data = common.ActivityLoading(nil)
+			act.Data = asyncdata.NewLoading[error, common.ActivityData](nil)
 			cmds = append(cmds, parseFileCmd(act))
 		}
 
 	case parseFileResultMsg:
 		if !m.activities.IsLastIndex() {
 			if act, ok := m.activities.Next(); ok {
-				act.Data = common.ActivityLoading(nil)
+				act.Data = asyncdata.NewLoading[error, common.ActivityData](nil)
 				cmds = append(cmds, parseFileCmd(act))
 			}
 		} else {
@@ -168,9 +168,9 @@ func parseFileCmd(act *common.Activity) tea.Cmd {
 		go func() {
 			data, err := fit.ParseFile(act.Path)
 			if err != nil {
-				act.Data = common.ActivityFailure(err)
+				act.Data = asyncdata.NewFailure[error, common.ActivityData](err)
 			} else {
-				act.Data = common.ActivitySuccess(*data)
+				act.Data = asyncdata.NewSuccess[error, common.ActivityData](*data)
 			}
 			// FIXME: for debugging only
 			time.Sleep(100 * time.Millisecond)
