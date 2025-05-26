@@ -7,8 +7,8 @@ import (
 
 func ActivitiesParsing(acts common.Activities) bool {
 	for _, act := range acts {
-		_, _, loading := asyncdata.Loading(act.Data.AsyncData)
-		notAsked := asyncdata.NotAsked(act.Data.AsyncData)
+		_, _, loading := asyncdata.Loading(act.Data)
+		notAsked := asyncdata.NotAsked(act.Data)
 		if loading || notAsked {
 			return true
 		}
@@ -19,7 +19,7 @@ func ActivitiesParsing(acts common.Activities) bool {
 func ActivitiesParsed(acts common.Activities) int {
 	count := 0
 	for _, act := range acts {
-		if _, ok := asyncdata.Success(act.Data.AsyncData); ok {
+		if _, ok := asyncdata.Success(act.Data); ok {
 			count += 1
 		}
 	}
@@ -29,7 +29,7 @@ func ActivitiesParsed(acts common.Activities) int {
 func ActivitiesFailures(acts common.Activities) int {
 	count := 0
 	for _, act := range acts {
-		if _, ok := asyncdata.Failure(act.Data.AsyncData); ok {
+		if _, ok := asyncdata.Failure(act.Data); ok {
 			count += 1
 		}
 	}

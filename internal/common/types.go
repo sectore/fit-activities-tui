@@ -15,51 +15,38 @@ type ActivityData struct {
 	TotalDistances []uint32
 }
 
-type ActivityAD struct {
-	asyncdata.AsyncData[error, ActivityData]
-}
-
-func (ad ActivityAD) FilterValue() string {
-	if act, ok := asyncdata.Success[error, ActivityData](ad.AsyncData); ok {
-		return act.FormatLocalTime()
-	}
-	return ""
-}
-
-func (ad ActivityAD) Title() string {
-	if act, ok := asyncdata.Success[error, ActivityData](ad.AsyncData); ok {
-		return act.FormatLocalTime()
-	}
-	// if ok := asyncdata.NotAsked[error, ActivityData](ad.AsyncData); ok {
-	// 	return "loading"
-	// }
-	return ""
-}
-
-func (ad ActivityAD) Description() string {
-	if act, ok := asyncdata.Success[error, ActivityData](ad.AsyncData); ok {
-		return act.FormatTotalDistance()
-	}
-	return ""
-}
-
-// func (act ActivityAD) Render() string      { return "" }
+type ActivityAD = asyncdata.AsyncData[error, ActivityData]
 
 type Activity struct {
 	Path string
 	Data ActivityAD
 }
 
-func (data ActivityData) GetTotalDistance() uint32 {
+func (act Activity) FilterValue() string {
+	return act.FormatLocalTime()
+
+}
+
+func (act Activity) Title() string {
+	return act.FormatLocalTime()
+}
+
+func (act Activity) Description() string {
+	return act.FormatTotalDistance()
+}
+
+func (act Activity) GetTotalDistance() uint32 {
 	var dist uint32 = 0
-	for _, d := range data.TotalDistances {
-		dist += d
+	if data, ok := asyncdata.Success[error, ActivityData](act.Data); ok {
+		for _, d := range data.TotalDistances {
+			dist += d
+		}
 	}
 	return dist
 }
 
-func (data ActivityData) FormatTotalDistance() string {
-	var meters = data.GetTotalDistance() / 100
+func (act Activity) FormatTotalDistance() string {
+	var meters = act.GetTotalDistance() / 100
 	if meters >= 1000 {
 		km := float64(meters) / 1000
 		formatted := fmt.Sprintf("%.1f", km)
@@ -71,10 +58,12 @@ func (data ActivityData) FormatTotalDistance() string {
 	}
 }
 
-func (data ActivityData) FormatLocalTime() string {
-	// return data.LocalTime.Format("2006-01-02 15:04")
-	return data.LocalTime.Format("02.01.06 15:04")
-
+func (act Activity) FormatLocalTime() string {
+	if data, ok := asyncdata.Success[error, ActivityData](act.Data); ok {
+		// return data.LocalTime.Format("2006-01-02 15:04")
+		return data.LocalTime.Format("02.01.06 15:04")
+	}
+	return ""
 }
 
 func (data ActivityData) FormatTotalTime() string {
@@ -105,7 +94,6 @@ func (data ActivityData) FormatTotalTime() string {
 		seconds = remainingSeconds % 60
 		s = fmt.Sprintf("%dd %02dh %02dm %02ds", days, hours, minutes, seconds)
 	}
-
 	return s
 }
 

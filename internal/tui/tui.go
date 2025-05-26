@@ -3,6 +3,7 @@ package tui
 import (
 	"fmt"
 	"io"
+	"path/filepath"
 	"time"
 
 	"github.com/charmbracelet/bubbles/list"
@@ -36,13 +37,16 @@ func NewListDelegate(spinner *spinner.Model) listDelegate {
 	s := list.NewDefaultItemStyles()
 	s.NormalTitle = lipgloss.NewStyle().
 		Padding(0, 0, 0, 2) //nolint:mnd
+	s.DimmedTitle = s.NormalTitle
 	s.NormalDesc = s.NormalTitle
+	s.DimmedDesc = s.NormalDesc
 	selectedStyle := lipgloss.NewStyle().
 		Border(lipgloss.OuterHalfBlockBorder(), false, false, false, true).
 		Padding(0, 0, 0, 1)
 	s.SelectedTitle = selectedStyle.
 		Bold(true)
 	s.SelectedDesc = selectedStyle
+	s.FilterMatch = lipgloss.NewStyle().Bold(true)
 
 	d := list.NewDefaultDelegate()
 
@@ -54,9 +58,9 @@ func NewListDelegate(spinner *spinner.Model) listDelegate {
 
 func (d *listDelegate) Render(w io.Writer, m list.Model, index int, item list.Item) {
 	// `ActivityAD` is our custom `Item`
-	if act, ok := item.(common.ActivityAD); ok {
-		_, _, loading := asyncdata.Loading(act.AsyncData)
-		notAsked := asyncdata.NotAsked(act.AsyncData)
+	if act, ok := item.(common.Activity); ok {
+		_, _, loading := asyncdata.Loading(act.Data)
+		notAsked := asyncdata.NotAsked(act.Data)
 		if loading || notAsked {
 			d.Spinner.Style = lipgloss.NewStyle().MarginBottom(1).MarginLeft(2)
 			fmt.Fprintf(w, "%s", d.Spinner.View())
@@ -81,6 +85,11 @@ func (d *listDelegate) Update(msg tea.Msg, _ *list.Model) tea.Cmd {
 	return nil
 }
 
+const (
+	pageActiveBullet   = "●"
+	pageInactiveBullet = "∙"
+)
+
 func InitialModel(path string) Model {
 
 	s := spinner.New()
@@ -89,10 +98,38 @@ func InitialModel(path string) Model {
 	// to make sure `spinner.Tick` is fired once. Currently in `Init`.
 	delegate := NewListDelegate(&s)
 	list := list.New([]list.Item{}, &delegate, 20, 0)
-	list.Title = "Tracks"
-	list.Styles.Title = lipgloss.NewStyle()
+	list.Title = "Activities"
+
+	// noForeground := lipgloss.NewStyle().Foreground(lipgloss.NoColor{})
+	noStyle := lipgloss.NewStyle()
+
+	// styles for prompt needs to be passed to `FilterInput`
+	fi := list.FilterInput
+	fi.Prompt = "/"
+	fi.PromptStyle = noStyle
+	fi.Cursor.Style = noStyle
+	list.FilterInput = fi
+
+	// styles for paginator needs to be passed to `Paginator`
+	p := list.Paginator
+	p.ActiveDot = lipgloss.NewStyle().SetString(pageActiveBullet).String()
+	p.InactiveDot = lipgloss.NewStyle().SetString(pageInactiveBullet).String()
+	list.Paginator = p
+
+	ls := list.Styles
+	ls.Title = lipgloss.NewStyle().Bold(true)
+	ls.DividerDot = list.Styles.DividerDot.Foreground(lipgloss.NoColor{})
+	ls.StatusBar = list.Styles.StatusBar.Foreground(lipgloss.NoColor{})
+	ls.StatusEmpty = noStyle
+	ls.StatusBarActiveFilter = noStyle
+	ls.StatusBarFilterCount = noStyle
+	ls.NoItems = noStyle
+
+	list.Styles = ls
+
 	list.SetSpinner(spinner.MiniDot)
-	list.SetStatusBarItemName("track", "tracks")
+	list.SetStatusBarItemName("activity", "activities")
+	list.SetShowHelp(false)
 
 	return Model{
 		importPath:  path,
@@ -117,10 +154,22 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.KeyMsg:
 		switch msg.String() {
+		// reload data
 		case "r":
-			// reload data
-			m.activities = common.Activities{}
-			cmds = append(cmds, getFilesCmd(m.importPath))
+			// ignore if an user typing a filter ...
+			if !m.list.SettingFilter() {
+				// reset activities
+				m.activities = common.Activities{}
+				// reset import index
+				m.importIndex = 0
+				// reset list
+				m.list.ResetSelected()
+				m.list.ResetFilter()
+				m.list.SetItems([]list.Item{})
+
+				cmds = append(cmds, getFilesCmd(m.importPath))
+
+			}
 		case "q":
 			return m, tea.Quit
 		}
@@ -131,30 +180,30 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		for i, path := range msg {
 			activities[i] = common.Activity{
 				Path: path,
-				Data: common.ActivityAD{AsyncData: asyncdata.NewNotAsked[error, common.ActivityData]()},
+				Data: asyncdata.NewNotAsked[error, common.ActivityData](),
 			}
 		}
 		m.activities = activities
 		// transform activities to be `list.Item`
 		items := make([]list.Item, len(msg))
 		for i, act := range activities {
-			items[i] = act.Data
+			items[i] = act
 		}
 		m.list.SetItems(items)
 		// parse first Activity
 		firstAct := m.activities[0]
-		firstAct.Data = common.ActivityAD{AsyncData: asyncdata.NewLoading[error, common.ActivityData](nil)}
+		firstAct.Data = asyncdata.NewLoading[error, common.ActivityData](nil)
 		cmds = append(cmds, parseFileCmd(&firstAct))
 
 	case parseFileResultMsg:
 		i := m.importIndex
 		m.activities[i] = *msg.Activity
-		m.list.SetItem(i, msg.Activity.Data)
+		m.list.SetItem(i, msg.Activity)
 
 		if i < len(m.activities)-1 {
 			m.importIndex++
 			act := &m.activities[m.importIndex]
-			act.Data = common.ActivityAD{AsyncData: asyncdata.NewLoading[error, common.ActivityData](nil)}
+			act.Data = asyncdata.NewLoading[error, common.ActivityData](nil)
 			cmds = append(cmds, parseFileCmd(act))
 
 		}
@@ -195,11 +244,16 @@ type Content struct {
 
 func renderContent(m Model) string {
 	var content string = ""
-	if len(m.activities) > 0 {
-		ad := m.activities[m.list.Index()].Data
-		if act, ok := asyncdata.Success[error, common.ActivityData](ad.AsyncData); ok {
-			content = fmt.Sprintf("total time \n%s", act.FormatTotalTime())
+	item := m.list.SelectedItem()
+	if item != nil {
+		// Note: Item is a Pointer here !!!
+		if act, ok := item.(*common.Activity); ok {
+			if act, ok := asyncdata.Success[error, common.ActivityData](act.Data); ok {
+				content = fmt.Sprintf("total time \n%s\n\n", act.FormatTotalTime())
+			}
+			content += fmt.Sprintf("file\n%s", filepath.Base(act.Path))
 		}
+
 	}
 	return content
 }
@@ -207,7 +261,6 @@ func renderContent(m Model) string {
 func (m Model) View() string {
 
 	s := lipgloss.JoinHorizontal(lipgloss.Top, m.list.View(), lipgloss.NewStyle().Padding(2).MarginTop(2).Render(
-		// m.activities.All()[m.list.Index()].Data.Title(),
 		fmt.Sprintf("%s", renderContent(m))),
 	)
 
@@ -279,12 +332,12 @@ func parseFileCmd(act *common.Activity) tea.Cmd {
 		go func() {
 			data, err := fit.ParseFile(act.Path)
 			if err != nil {
-				act.Data = common.ActivityAD{AsyncData: asyncdata.NewFailure[error, common.ActivityData](err)}
+				act.Data = asyncdata.NewFailure[error, common.ActivityData](err)
 			} else {
-				act.Data = common.ActivityAD{AsyncData: asyncdata.NewSuccess[error, common.ActivityData](*data)}
+				act.Data = asyncdata.NewSuccess[error, common.ActivityData](*data)
 			}
 			// FIXME: for debugging only
-			time.Sleep(100 * time.Millisecond)
+			time.Sleep(50 * time.Millisecond)
 			resultCh <- parseFileResultMsg{act}
 			close(resultCh)
 		}()
