@@ -15,20 +15,44 @@ type ActivityData struct {
 	TotalDistances []uint32
 }
 
-type ActivityAD = asyncdata.AsyncData[error, ActivityData]
+// type ActivityAD = asyncdata.AsyncData[error, ActivityData]
+
+// TODO: use `inner` for embedded field
+type ActivityAD struct {
+	asyncdata.AsyncData[error, ActivityData]
+}
+
+func (ad ActivityAD) FilterValue() string {
+	if act, ok := asyncdata.Success[error, ActivityData](ad.AsyncData); ok {
+		return act.FormatLocalTime()
+	}
+	return ""
+}
+
+func (ad ActivityAD) Title() string {
+	if act, ok := asyncdata.Success[error, ActivityData](ad.AsyncData); ok {
+		return act.FormatLocalTime()
+	}
+	// if ok := asyncdata.NotAsked[error, ActivityData](ad.AsyncData); ok {
+	// 	return "loading"
+	// }
+	return ""
+}
+
+func (ad ActivityAD) Description() string {
+	if act, ok := asyncdata.Success[error, ActivityData](ad.AsyncData); ok {
+		return act.FormatTotalDistance()
+	}
+	return ""
+}
+
+// func (act ActivityAD) Render() string      { return "" }
 
 type Activity struct {
 	Path     string
 	selected bool
 	Data     ActivityAD
 }
-
-func (act Activity) FilterValue() string {
-	return act.FormatLocalTime()
-}
-
-func (act Activity) Title() string       { return act.FormatLocalTime() }
-func (act Activity) Description() string { return act.FormatTotalDistance() }
 
 func (act *Activity) Toggle() {
 	act.selected = !act.selected
@@ -38,18 +62,16 @@ func (act Activity) IsSelected() bool {
 	return act.selected
 }
 
-func (act Activity) GetTotalDistance() uint32 {
+func (data ActivityData) GetTotalDistance() uint32 {
 	var dist uint32 = 0
-	if data, ok := asyncdata.Success[error, ActivityData](act.Data); ok {
-		for _, d := range data.TotalDistances {
-			dist += d
-		}
+	for _, d := range data.TotalDistances {
+		dist += d
 	}
 	return dist
 }
 
-func (act Activity) FormatTotalDistance() string {
-	var meters = act.GetTotalDistance() / 100
+func (data ActivityData) FormatTotalDistance() string {
+	var meters = data.GetTotalDistance() / 100
 	if meters >= 1000 {
 		km := float64(meters) / 1000
 		formatted := fmt.Sprintf("%.1f", km)
@@ -61,43 +83,41 @@ func (act Activity) FormatTotalDistance() string {
 	}
 }
 
-func (act Activity) FormatLocalTime() string {
-	if data, ok := asyncdata.Success[error, ActivityData](act.Data); ok {
-		return data.LocalTime.Format("2006-01-02 15:04")
-	}
-	return ""
+func (data ActivityData) FormatLocalTime() string {
+	// return data.LocalTime.Format("2006-01-02 15:04")
+	return data.LocalTime.Format("02.01.06 15:04")
+
 }
 
-func (act Activity) FormatTotalTime() string {
+func (data ActivityData) FormatTotalTime() string {
 	var s string
-	if data, ok := asyncdata.Success[error, ActivityData](act.Data); ok {
-		seconds := int(data.TotalTime / 1000)
-		if seconds < 60 {
-			// Format as ss
-			s = strconv.Itoa(seconds)
-		} else if seconds < 3600 {
-			// Format as mm:ss
-			minutes := seconds / 60
-			remainingSeconds := seconds % 60
-			s = fmt.Sprintf("%02d:%02d", minutes, remainingSeconds)
-		} else if seconds < 86400 {
-			// Format as hh:mm:ss
-			hours := seconds / 3600
-			remainingSeconds := seconds % 3600
-			minutes := remainingSeconds / 60
-			seconds = remainingSeconds % 60
-			s = fmt.Sprintf("%02d:%02d:%02d", hours, minutes, seconds)
-		} else {
-			// Format as dd:hh:mm:ss
-			days := seconds / 86400
-			remainingSeconds := seconds % 86400
-			hours := remainingSeconds / 3600
-			remainingSeconds = remainingSeconds % 3600
-			minutes := remainingSeconds / 60
-			seconds = remainingSeconds % 60
-			s = fmt.Sprintf("%d:%02d:%02d:%02d", days, hours, minutes, seconds)
-		}
+	seconds := int(data.TotalTime / 1000)
+	if seconds < 60 {
+		// Format as ss
+		s = strconv.Itoa(seconds)
+	} else if seconds < 3600 {
+		// Format as mm:ss
+		minutes := seconds / 60
+		remainingSeconds := seconds % 60
+		s = fmt.Sprintf("%02dm %02ds", minutes, remainingSeconds)
+	} else if seconds < 86400 {
+		// Format as hh:mm:ss
+		hours := seconds / 3600
+		remainingSeconds := seconds % 3600
+		minutes := remainingSeconds / 60
+		seconds = remainingSeconds % 60
+		s = fmt.Sprintf("%02dh %02dm %02ds", hours, minutes, seconds)
+	} else {
+		// Format as dd:hh:mm:ss
+		days := seconds / 86400
+		remainingSeconds := seconds % 86400
+		hours := remainingSeconds / 3600
+		remainingSeconds = remainingSeconds % 3600
+		minutes := remainingSeconds / 60
+		seconds = remainingSeconds % 60
+		s = fmt.Sprintf("%dd %02dh %02dm %02ds", days, hours, minutes, seconds)
 	}
+
 	return s
 }
 
@@ -112,6 +132,10 @@ func NewActivities(acts []Activity) Activities {
 
 func (acts Activities) All() []Activity {
 	return acts.inner
+}
+
+func (acts Activities) Empty() bool {
+	return len(acts.inner) <= 0
 }
 
 func (acts *Activities) Next() (*Activity, bool) {
