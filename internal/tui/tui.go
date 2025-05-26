@@ -15,11 +15,12 @@ import (
 )
 
 type Model struct {
-	importPath string
-	activities common.Activities
-	errMsgs    []error
-	spinner    spinner.Model
-	list       list.Model
+	importPath  string
+	importIndex int
+	activities  common.Activities
+	errMsgs     []error
+	spinner     spinner.Model
+	list        list.Model
 }
 
 type listDelegate struct {
@@ -68,8 +69,6 @@ func (d *listDelegate) Render(w io.Writer, m list.Model, index int, item list.It
 	d.DefaultDelegate.Render(w, m, index, item)
 }
 
-// func (d customDelegate) Update(_ tea.Msg, _ *list.Model) tea.Cmd { return nil }
-
 // Delegate `Update` to have still an animated spinner for each item
 func (d *listDelegate) Update(msg tea.Msg, _ *list.Model) tea.Cmd {
 	switch msg := msg.(type) {
@@ -96,10 +95,11 @@ func InitialModel(path string) Model {
 	list.SetStatusBarItemName("track", "tracks")
 
 	return Model{
-		importPath: path,
-		activities: common.Activities{},
-		spinner:    s,
-		list:       list,
+		importPath:  path,
+		importIndex: 0,
+		activities:  common.Activities{},
+		spinner:     s,
+		list:        list,
 	}
 }
 
@@ -126,6 +126,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 	case getFilesResultMsg:
+		// list of `NotAsked` activities
 		activities := make([]common.Activity, len(msg))
 		for i, path := range msg {
 			activities[i] = common.Activity{
@@ -133,32 +134,29 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				Data: common.ActivityAD{AsyncData: asyncdata.NewNotAsked[error, common.ActivityData]()},
 			}
 		}
-		m.activities = common.NewActivities(activities)
-
+		m.activities = activities
+		// transform activities to be `list.Item`
 		items := make([]list.Item, len(msg))
 		for i, act := range activities {
 			items[i] = act.Data
 		}
 		m.list.SetItems(items)
-
-		if act, ok := m.activities.CurrentAct(); ok {
-			act.Data = common.ActivityAD{AsyncData: asyncdata.NewLoading[error, common.ActivityData](nil)}
-			cmds = append(cmds, parseFileCmd(act))
-		}
+		// parse first Activity
+		firstAct := m.activities[0]
+		firstAct.Data = common.ActivityAD{AsyncData: asyncdata.NewLoading[error, common.ActivityData](nil)}
+		cmds = append(cmds, parseFileCmd(&firstAct))
 
 	case parseFileResultMsg:
-		current := m.activities.CurrentIndex()
-		if cAct, ok := m.activities.CurrentAct(); ok {
-			m.list.SetItem(int(current), cAct.Data)
-		}
-		if !m.activities.IsLastIndex() {
+		i := m.importIndex
+		m.activities[i] = *msg.Activity
+		m.list.SetItem(i, msg.Activity.Data)
 
-			if act, ok := m.activities.Next(); ok {
-				act.Data = common.ActivityAD{AsyncData: asyncdata.NewLoading[error, common.ActivityData](nil)}
-				cmds = append(cmds, parseFileCmd(act))
-			}
-		} else {
-			m.activities.FirstIndex()
+		if i < len(m.activities)-1 {
+			m.importIndex++
+			act := &m.activities[m.importIndex]
+			act.Data = common.ActivityAD{AsyncData: asyncdata.NewLoading[error, common.ActivityData](nil)}
+			cmds = append(cmds, parseFileCmd(act))
+
 		}
 
 	case errMsg:
@@ -197,8 +195,8 @@ type Content struct {
 
 func renderContent(m Model) string {
 	var content string = ""
-	if !m.activities.Empty() {
-		ad := m.activities.All()[m.list.Index()].Data
+	if len(m.activities) > 0 {
+		ad := m.activities[m.list.Index()].Data
 		if act, ok := asyncdata.Success[error, common.ActivityData](ad.AsyncData); ok {
 			content = fmt.Sprintf("total time \n%s", act.FormatTotalTime())
 		}
@@ -231,9 +229,9 @@ func (m Model) View() string {
 		fmt.Sprintf("%s %d/%d FIT files (%d errors) i=%d",
 			loading,
 			ActivitiesParsed(m.activities)+ActivitiesFailures(m.activities),
-			len(m.activities.All()),
+			len(m.activities),
 			ActivitiesFailures(m.activities),
-			m.activities.CurrentIndex(),
+			m.list.Index(),
 		),
 	)
 	s += "\n"
@@ -256,7 +254,7 @@ func (m Model) View() string {
 
 type (
 	getFilesResultMsg  []string
-	parseFileResultMsg struct{}
+	parseFileResultMsg struct{ *common.Activity }
 	errMsg             struct{ err error }
 )
 
@@ -287,7 +285,7 @@ func parseFileCmd(act *common.Activity) tea.Cmd {
 			}
 			// FIXME: for debugging only
 			time.Sleep(100 * time.Millisecond)
-			resultCh <- parseFileResultMsg{}
+			resultCh <- parseFileResultMsg{act}
 			close(resultCh)
 		}()
 		// return result msg
