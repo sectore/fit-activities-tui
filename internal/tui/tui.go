@@ -242,26 +242,26 @@ type Content struct {
 	common.Activities
 }
 
-func renderContent(m Model) string {
-	var content string = ""
+func (m Model) contentView() string {
+	var view string = ""
 	item := m.list.SelectedItem()
-	if item != nil {
+	if item != nil && !m.list.SettingFilter() {
 		// Note: Item is a Pointer here !!!
 		if act, ok := item.(*common.Activity); ok {
 			if act, ok := asyncdata.Success[error, common.ActivityData](act.Data); ok {
-				content = fmt.Sprintf("total time \n%s\n\n", act.FormatTotalTime())
+				view += fmt.Sprintf("total time \n%s\n\n", act.FormatTotalTime())
 			}
-			content += fmt.Sprintf("file\n%s", filepath.Base(act.Path))
+			view += fmt.Sprintf("file\n%s", filepath.Base(act.Path))
 		}
 
 	}
-	return content
+	return view
 }
 
 func (m Model) View() string {
 
 	s := lipgloss.JoinHorizontal(lipgloss.Top, m.list.View(), lipgloss.NewStyle().Padding(2).MarginTop(2).Render(
-		fmt.Sprintf("%s", renderContent(m))),
+		m.contentView()),
 	)
 
 	s += "\n"
