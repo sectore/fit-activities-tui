@@ -28,6 +28,20 @@ const (
 	pageInactiveBullet = "∙"
 )
 
+var (
+	appStyle = lipgloss.NewStyle().Padding(1, 2)
+	// headline style
+	hStyle = lipgloss.NewStyle().
+		PaddingLeft(1).
+		PaddingRight(3).
+		MarginLeft(2).
+		Border(lipgloss.NormalBorder(), true, false)
+	errorStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#F25D94"))
+	noColor    = lipgloss.NoColor{}
+	emptyStyle = lipgloss.NewStyle()
+	br         = lipgloss.NewStyle().SetString("\n").String()
+)
+
 func InitialModel(path string) Model {
 
 	s := spinner.New()
@@ -35,17 +49,17 @@ func InitialModel(path string) Model {
 	// Note: We do need to pass `Spinner` down to the `ListDelegate` of the list
 	// to make sure `spinner.Tick` is fired once. Currently in `Init`.
 	delegate := NewListDelegate(&s)
+
 	list := list.New([]list.Item{}, &delegate, 20, 0)
 	list.Title = "Activities"
 
 	// noForeground := lipgloss.NewStyle().Foreground(lipgloss.NoColor{})
-	noStyle := lipgloss.NewStyle()
 
 	// styles for prompt needs to be passed to `FilterInput`
 	fi := list.FilterInput
 	fi.Prompt = "/"
-	fi.PromptStyle = noStyle
-	fi.Cursor.Style = noStyle
+	fi.PromptStyle = emptyStyle
+	fi.Cursor.Style = emptyStyle
 	list.FilterInput = fi
 
 	// styles for paginator needs to be passed to `Paginator`
@@ -56,12 +70,12 @@ func InitialModel(path string) Model {
 
 	ls := list.Styles
 	ls.Title = lipgloss.NewStyle().Bold(true)
-	ls.DividerDot = list.Styles.DividerDot.Foreground(lipgloss.NoColor{})
-	ls.StatusBar = list.Styles.StatusBar.Foreground(lipgloss.NoColor{})
-	ls.StatusEmpty = noStyle
-	ls.StatusBarActiveFilter = noStyle
-	ls.StatusBarFilterCount = noStyle
-	ls.NoItems = noStyle
+	ls.DividerDot = list.Styles.DividerDot.Foreground(noColor)
+	ls.StatusBar = list.Styles.StatusBar.Foreground(noColor)
+	ls.StatusEmpty = emptyStyle
+	ls.StatusBarActiveFilter = emptyStyle
+	ls.StatusBarFilterCount = emptyStyle
+	ls.NoItems = emptyStyle
 
 	list.Styles = ls
 
@@ -169,23 +183,22 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
-var (
-	appStyle          = lipgloss.NewStyle().Padding(1, 2)
-	titleStyle        = lipgloss.NewStyle().MarginLeft(2)
-	itemStyle         = lipgloss.NewStyle().PaddingLeft(4)
-	selectedItemStyle = lipgloss.NewStyle().PaddingLeft(2).Foreground(lipgloss.Color("170"))
-)
-
 func (m Model) contentView() string {
-	var view string = ""
+	var view string
 	item := m.list.SelectedItem()
 	if item != nil && !m.list.SettingFilter() {
 		// Note: Item is a Pointer here !!!
 		if act, ok := item.(*common.Activity); ok {
 			if act, ok := asyncdata.Success[error, common.ActivityData](act.Data); ok {
-				view += fmt.Sprintf("total time \n%s\n\n", act.FormatTotalTime())
+				view += "total time %s"
+				view += br
+				view += act.FormatTotalTime()
+				view += br
+				view += br
 			}
-			view += fmt.Sprintf("file\n%s", filepath.Base(act.Path))
+			view += "file"
+			view += br
+			view += filepath.Base(act.Path)
 		}
 
 	}
@@ -194,25 +207,18 @@ func (m Model) contentView() string {
 
 func (m Model) View() string {
 
-	s := lipgloss.JoinHorizontal(lipgloss.Top, m.list.View(), lipgloss.NewStyle().Padding(2).MarginTop(2).Render(
+	view := lipgloss.JoinHorizontal(lipgloss.Top, m.list.View(), lipgloss.NewStyle().Padding(2).MarginTop(2).Render(
 		m.contentView()),
 	)
 
-	s += "\n"
-
-	// headline style
-	var hs = lipgloss.NewStyle().
-		PaddingLeft(1).
-		PaddingRight(3).
-		MarginLeft(2).
-		Border(lipgloss.NormalBorder(), true, false)
+	view += br
 
 	loading := "  "
 	if ActivitiesParsing(m.activities) {
 		loading = m.spinner.View()
 	}
 
-	s += hs.Render(
+	view += hStyle.Render(
 		fmt.Sprintf("%s %d/%d FIT files (%d errors) i=%d",
 			loading,
 			ActivitiesParsed(m.activities)+ActivitiesFailures(m.activities),
@@ -221,22 +227,18 @@ func (m Model) View() string {
 			m.list.Index(),
 		),
 	)
-	s += "\n"
-	s += lipgloss.NewStyle().
+	view += br
+	view += lipgloss.NewStyle().
 		PaddingLeft(2).
-		Render(fmt.Sprintf("%s", m.importPath))
-	s += "\n"
-
-	// errorStyle
-	var es = lipgloss.NewStyle().Foreground(lipgloss.Color("#F25D94"))
+		Render(m.importPath)
+	view += br
 
 	for _, err := range m.errMsgs {
-		s += es.Render(fmt.Sprintf("%s\n", err))
+		view += errorStyle.Render(fmt.Sprintf("%s", err))
+		view += br
 	}
 
-	s += "\n"
-
-	return appStyle.Render(s)
+	return appStyle.Render(view)
 }
 
 type (
