@@ -3,6 +3,7 @@ package tui
 import (
 	"fmt"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/charmbracelet/bubbles/list"
@@ -15,21 +16,32 @@ import (
 )
 
 type Model struct {
-	importPath  string
-	importIndex int
-	activities  common.Activities
-	errMsgs     []error
-	spinner     spinner.Model
-	list        list.Model
+	importPath    string
+	importIndex   int
+	activities    common.Activities
+	errMsgs       []error
+	spinner       spinner.Model
+	list          list.Model
+	width         int
+	height        int
+	contentHeight int
+	showMenu      bool
 }
 
 const (
 	pageActiveBullet   = "●"
 	pageInactiveBullet = "∙"
+	arrowTop           = "↑"
+	arrowDown          = "↓"
+	openMenuHeight     = 2
+	closedMenuHeight   = 1
 )
 
 var (
-	appStyle = lipgloss.NewStyle().Padding(1, 2)
+	contentStyle  = lipgloss.NewStyle().Padding(1)
+	lContentStyle = lipgloss.NewStyle()
+	rContentStyle = lipgloss.NewStyle().Padding(2).MarginTop(2)
+	footerStyle   = lipgloss.NewStyle().Padding(0, 1)
 	// headline style
 	hStyle = lipgloss.NewStyle().
 		PaddingLeft(1).
@@ -84,11 +96,15 @@ func InitialModel(path string) Model {
 	list.SetShowHelp(false)
 
 	return Model{
-		importPath:  path,
-		importIndex: 0,
-		activities:  common.Activities{},
-		spinner:     s,
-		list:        list,
+		importPath:    path,
+		importIndex:   0,
+		activities:    common.Activities{},
+		spinner:       s,
+		list:          list,
+		width:         0,
+		height:        0,
+		contentHeight: 0,
+		showMenu:      false,
 	}
 }
 
@@ -96,13 +112,23 @@ func (m Model) Init() tea.Cmd {
 	return tea.Batch(m.spinner.Tick, getFilesCmd(m.importPath))
 }
 
+func (m *Model) updateContentHeight() {
+	footerH := closedMenuHeight
+	if m.showMenu {
+		footerH = openMenuHeight
+	}
+	listH := m.height - footerH - 2 // content paddingTopBottom
+	m.list.SetHeight(listH)
+	m.contentHeight = listH
+}
+
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 	switch msg := msg.(type) {
 
 	case tea.WindowSizeMsg:
-		_, v := appStyle.GetFrameSize()
-		m.list.SetHeight(msg.Height - v - 6)
+		m.width, m.height = msg.Width, msg.Height
+		m.updateContentHeight()
 
 	case tea.KeyMsg:
 		switch msg.String() {
@@ -122,6 +148,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				cmds = append(cmds, getFilesCmd(m.importPath))
 
 			}
+		case "m":
+			m.showMenu = !m.showMenu
+			m.updateContentHeight()
 		case "q":
 			return m, tea.Quit
 		}
@@ -190,7 +219,7 @@ func (m Model) contentView() string {
 		// Note: Item is a Pointer here !!!
 		if act, ok := item.(*common.Activity); ok {
 			if act, ok := asyncdata.Success[error, common.ActivityData](act.Data); ok {
-				view += "total time %s"
+				view += "total time"
 				view += br
 				view += act.FormatTotalTime()
 				view += br
@@ -205,40 +234,36 @@ func (m Model) contentView() string {
 	return view
 }
 
+func (m Model) footerView() string {
+	symbol := arrowTop
+	if m.showMenu {
+		symbol = arrowDown
+	}
+	menu := fmt.Sprintf("[m]enu %s", symbol)
+	line := strings.Repeat("─", max(0, m.width-len(menu)-1))
+	view := fmt.Sprintf("%s %s", menu, line)
+	if m.showMenu {
+		view += br
+		view += "menu content"
+	}
+
+	return view
+}
+
 func (m Model) View() string {
 
-	view := lipgloss.JoinHorizontal(lipgloss.Top, m.list.View(), lipgloss.NewStyle().Padding(2).MarginTop(2).Render(
+	var content string
+	content = fmt.Sprintf("w:%d h:%d cH:%d", m.width, m.height, m.contentHeight)
+	content += br
+	content = lipgloss.JoinHorizontal(lipgloss.Top, lContentStyle.Render(m.list.View()), rContentStyle.Render(
 		m.contentView()),
 	)
 
-	view += br
+	view := lipgloss.JoinVertical(lipgloss.Position(lipgloss.Left),
+		contentStyle.Render(content),
+		footerStyle.Render(m.footerView()))
 
-	loading := "  "
-	if ActivitiesParsing(m.activities) {
-		loading = m.spinner.View()
-	}
-
-	view += hStyle.Render(
-		fmt.Sprintf("%s %d/%d FIT files (%d errors) i=%d",
-			loading,
-			ActivitiesParsed(m.activities)+ActivitiesFailures(m.activities),
-			len(m.activities),
-			ActivitiesFailures(m.activities),
-			m.list.Index(),
-		),
-	)
-	view += br
-	view += lipgloss.NewStyle().
-		PaddingLeft(2).
-		Render(m.importPath)
-	view += br
-
-	for _, err := range m.errMsgs {
-		view += errorStyle.Render(fmt.Sprintf("%s", err))
-		view += br
-	}
-
-	return appStyle.Render(view)
+	return view
 }
 
 type (
