@@ -8,8 +8,8 @@ import (
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/sectore/fit-sum-tui/internal/asyncdata"
-	"github.com/sectore/fit-sum-tui/internal/common"
+	"github.com/sectore/fit-activities-tui/internal/asyncdata"
+	"github.com/sectore/fit-activities-tui/internal/common"
 )
 
 type listDelegate struct {

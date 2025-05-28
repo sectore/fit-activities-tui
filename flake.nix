@@ -20,8 +20,8 @@
         # Generate a user-friendly version number.
         version = builtins.substring 0 8 lastModifiedDate;
       in {
-        fit-sum-tui = pkgs.buildGoModule {
-          pname = "fit-sum-tui";
+        fit-activities-tui = pkgs.buildGoModule {
+          pname = "fit-activities-tui";
           inherit version;
           # In 'nix develop', we don't need a copy of the source tree
           # in the Nix store.

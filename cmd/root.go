@@ -5,12 +5,12 @@ import (
 	"os"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/sectore/fit-sum-tui/internal/tui"
+	"github.com/sectore/fit-activities-tui/internal/tui"
 	"github.com/spf13/cobra"
 )
 
 var rootCmd = &cobra.Command{
-	Use: "fit-sum-tui",
+	Use: "fit-activities-tui",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		path, _ := cmd.Flags().GetString("import")
 		// if no path provided, try to use current directory
