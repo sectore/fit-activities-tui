@@ -1,8 +1,8 @@
 package tui
 
 import (
-	"github.com/sectore/fit-sum-tui/internal/asyncdata"
-	"github.com/sectore/fit-sum-tui/internal/common"
+	"github.com/sectore/fit-activities-tui/internal/asyncdata"
+	"github.com/sectore/fit-activities-tui/internal/common"
 )
 
 func ActivitiesParsing(acts common.Activities) bool {

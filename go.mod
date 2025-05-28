@@ -1,4 +1,4 @@
-module github.com/sectore/fit-sum-tui
+module github.com/sectore/fit-activities-tui
 
 go 1.23.0
 

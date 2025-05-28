@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sectore/fit-sum-tui/internal/asyncdata"
+	"github.com/sectore/fit-activities-tui/internal/asyncdata"
 )
 
 type ActivityData struct {

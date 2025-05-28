@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/sectore/fit-sum-tui/cmd"
+	"github.com/sectore/fit-activities-tui/cmd"
 )
 
 func main() {

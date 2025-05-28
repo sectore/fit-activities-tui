@@ -6,7 +6,7 @@ import (
 
 	"github.com/muktihari/fit/decoder"
 	"github.com/muktihari/fit/profile/filedef"
-	"github.com/sectore/fit-sum-tui/internal/common"
+	"github.com/sectore/fit-activities-tui/internal/common"
 )
 
 func ParseFile(file string) (*common.ActivityData, error) {
