@@ -33,7 +33,7 @@ const (
 	pageInactiveBullet = "∙"
 	arrowTop           = "↑"
 	arrowDown          = "↓"
-	openMenuHeight     = 2
+	openMenuHeight     = 4
 	closedMenuHeight   = 1
 )
 
@@ -149,10 +149,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			}
 		case "m":
-			m.showMenu = !m.showMenu
-			m.updateContentHeight()
+			if !m.list.SettingFilter() {
+				m.showMenu = !m.showMenu
+				m.updateContentHeight()
+			}
 		case "q":
-			return m, tea.Quit
+			if !m.list.SettingFilter() {
+				return m, tea.Quit
+			}
 		}
 
 	case getFilesResultMsg:
@@ -243,8 +247,56 @@ func (m Model) footerView() string {
 	line := strings.Repeat("─", max(0, m.width-len(menu)-1))
 	view := fmt.Sprintf("%s %s", menu, line)
 	if m.showMenu {
+		h := lipgloss.NewStyle().Bold(true).PaddingRight(3)
+		l := lipgloss.NewStyle().PaddingRight(1)
 		view += br
-		view += "menu content"
+		col1 := lipgloss.JoinVertical(lipgloss.Top,
+			h.Render("actions"),
+			h.Render("list"),
+			h.Render("filter"),
+		)
+		col2Filter := "[/]start"
+		if m.list.SettingFilter() {
+			if len(m.list.FilterValue()) > 0 {
+				col2Filter = "[ENTER]apply"
+			} else {
+				col2Filter = "[ESC]cancel"
+			}
+		}
+		col2 := lipgloss.JoinVertical(lipgloss.Top,
+			l.Render("[r]eload"),
+			l.Render("["+arrowTop+"/j]up"),
+			l.Render(col2Filter),
+		)
+		col3Filter := ""
+		if m.list.IsFiltered() {
+			col3Filter = "[ESC]clear"
+		}
+		if m.list.SettingFilter() && len(m.list.FilterValue()) > 0 {
+			col3Filter = "[ESC]skip"
+		}
+		col3 := lipgloss.JoinVertical(lipgloss.Top,
+			l.Render("[q]uit"),
+			l.Render("["+arrowDown+"/k]down"),
+			l.Render(col3Filter),
+		)
+		col4 := lipgloss.JoinVertical(lipgloss.Top,
+			"",
+			l.Render("[g]first"),
+			"",
+		)
+		col5 := lipgloss.JoinVertical(lipgloss.Top,
+			"",
+			l.Render("[G]last"),
+			"",
+		)
+		col6 := lipgloss.JoinVertical(lipgloss.Top,
+			"",
+			l.Render("[←/→]switch pages"),
+			"",
+		)
+		table := lipgloss.JoinHorizontal(lipgloss.Left, col1, col2, col3, col4, col5, col6)
+		view += table
 	}
 
 	return view
