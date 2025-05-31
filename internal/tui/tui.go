@@ -233,7 +233,7 @@ func (m Model) RightContentView() string {
 		Bold(true).
 		PaddingRight(4).
 		Border(lipgloss.ASCIIBorder(), false, false, true, false).
-		Render(fmt.Sprintf("%s  activities", label))
+		Render(fmt.Sprintf("%s activities", label))
 	sumView += br
 	sumTable := table.New().
 		Rows(sumRows...).
@@ -266,7 +266,7 @@ func (m Model) RightContentView() string {
 			{"elevation", "..."},
 			{"temperature", "..."},
 		}
-		var col = lipgloss.NewStyle().PaddingRight(5).Render
+		var col = lipgloss.NewStyle().PaddingRight(3).Render
 		// Note: Item is a Pointer here !!!
 		if act, ok := item.(*common.Activity); ok {
 			if act, ok := asyncdata.Success[error, common.ActivityData](act.Data); ok {
@@ -286,8 +286,10 @@ func (m Model) RightContentView() string {
 					common.FormatSpeed(act.Speed().Max))
 
 				// Elevation
-				rows[4][1] = fmt.Sprintf(`%s%s%s`,
-					col("Σ ..."), col("min ..."), "max ...")
+				rows[4][1] = fmt.Sprintf(`%s %s`,
+					col(common.FormatAscent(act.TotalAscant())),
+					common.FormatDescent(act.TotalDescant()),
+				)
 				// temperature
 				rows[5][1] = fmt.Sprintf(`⌀ %s min %s max %s`,
 					col(common.FormatTemperature(act.Temperature().Avg)),

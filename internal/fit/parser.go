@@ -38,6 +38,16 @@ func ParseFile(file string) (*common.ActivityData, error) {
 		distances[i] = ss.TotalDistance
 	}
 
+	ascents := make([]uint16, len(act.Sessions))
+	for i, ss := range act.Sessions {
+		ascents[i] = ss.TotalAscent
+	}
+
+	descents := make([]uint16, len(act.Sessions))
+	for i, ss := range act.Sessions {
+		descents[i] = ss.TotalDescent
+	}
+
 	temperatures := make([]common.Temperature, len(act.Records))
 	for i, rs := range act.Records {
 		temperatures[i] = rs.Temperature
@@ -54,6 +64,8 @@ func ParseFile(file string) (*common.ActivityData, error) {
 		TotalDistances: distances,
 		Temperatures:   temperatures,
 		Speeds:         speeds,
+		Descents:       descents,
+		Ascents:        ascents,
 	}
 
 	return &ad, nil

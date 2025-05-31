@@ -65,6 +65,14 @@ func FormatTemperature(t Temperature) string {
 	return fmt.Sprintf("%d°C", t)
 }
 
+func FormatAscent(v Ascent) string {
+	return fmt.Sprintf("+%dm", v)
+}
+
+func FormatDescent(v Descent) string {
+	return fmt.Sprintf("-%dm", v)
+}
+
 func FormatSpeed(s Speed) string {
 	return fmt.Sprintf("%.1fkm/h", float32(s)*3.6)
 }

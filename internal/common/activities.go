@@ -12,12 +12,20 @@ type Speeds = []Speed
 type Temperature = int8
 type Temperatures = []Temperature
 
+type Ascent = uint16
+type Ascents = []Ascent
+
+type Descent = uint16
+type Descents = []Descent
+
 type ActivityData struct {
 	LocalTime      time.Time
 	TotalTime      uint32
 	TotalDistances []uint32
 	Speeds         Speeds
 	Temperatures   Temperatures
+	Descents       Descents
+	Ascents        Ascents
 }
 
 func (act ActivityData) TotalDistance() uint32 {
@@ -26,6 +34,24 @@ func (act ActivityData) TotalDistance() uint32 {
 		value += d
 	}
 	return value
+}
+
+func (act ActivityData) TotalDescant() Descent {
+	l := len(act.Descents)
+	value := Descent(0)
+	for _, d := range act.Descents {
+		value += d
+	}
+	return value / uint16(l)
+}
+
+func (act ActivityData) TotalAscant() Ascent {
+	value := Ascent(0)
+	l := len(act.Ascents)
+	for _, d := range act.Ascents {
+		value += d
+	}
+	return value / uint16(l)
 }
 
 type SpeedStats struct {
