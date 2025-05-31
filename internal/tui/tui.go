@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/spinner"
@@ -30,19 +29,19 @@ type Model struct {
 }
 
 const (
-	pageActiveBullet   = "●"
-	pageInactiveBullet = "∙"
-	arrowTop           = "↑"
-	arrowDown          = "↓"
-	openMenuHeight     = 6
-	closedMenuHeight   = 1
+	arrowTop         = "↑"
+	arrowDown        = "↓"
+	openMenuHeight   = 6
+	closedMenuHeight = 1
 )
 
 var (
-	contentStyle  = lipgloss.NewStyle().Padding(1)
-	lContentStyle = lipgloss.NewStyle()
-	rContentStyle = lipgloss.NewStyle().Padding(2).MarginTop(2)
-	footerStyle   = lipgloss.NewStyle().Padding(0, 1)
+	contentStyle = lipgloss.NewStyle().Padding(1)
+	// Note: Set width of list here,
+	// because `list.SetWidth()` seems does not to work
+	leftContentStyle  = lipgloss.NewStyle().Width(30)
+	rightContentStyle = lipgloss.NewStyle().Padding(0, 2, 2, 0)
+	footerStyle       = lipgloss.NewStyle().Padding(0, 1)
 	// headline style
 	hStyle = lipgloss.NewStyle().
 		PaddingLeft(1).
@@ -66,8 +65,6 @@ func InitialModel(path string) Model {
 	list := list.New([]list.Item{}, &delegate, 20, 0)
 	list.Title = "Activities"
 
-	// noForeground := lipgloss.NewStyle().Foreground(lipgloss.NoColor{})
-
 	// styles for prompt needs to be passed to `FilterInput`
 	fi := list.FilterInput
 	fi.Prompt = "/"
@@ -77,12 +74,12 @@ func InitialModel(path string) Model {
 
 	// styles for paginator needs to be passed to `Paginator`
 	p := list.Paginator
-	p.ActiveDot = lipgloss.NewStyle().SetString(pageActiveBullet).String()
-	p.InactiveDot = lipgloss.NewStyle().SetString(pageInactiveBullet).String()
+	p.ActiveDot = lipgloss.NewStyle().SetString(common.BulletPointBig).String()
+	p.InactiveDot = lipgloss.NewStyle().SetString(common.BulletPoint).String()
 	list.Paginator = p
 
 	ls := list.Styles
-	ls.Title = lipgloss.NewStyle().Bold(true)
+	ls.Title = emptyStyle // override to use custom style for custom title
 	ls.DividerDot = list.Styles.DividerDot.Foreground(noColor)
 	ls.StatusBar = list.Styles.StatusBar.Foreground(noColor)
 	ls.StatusEmpty = emptyStyle
@@ -93,8 +90,10 @@ func InitialModel(path string) Model {
 	list.Styles = ls
 
 	list.SetSpinner(spinner.MiniDot)
-	list.SetStatusBarItemName("activity", "activities")
+	// list.SetStatusBarItemName("activity", "activities")
 	list.SetShowHelp(false)
+	list.SetShowTitle(true)
+	list.SetShowStatusBar(false)
 
 	return Model{
 		importPath:    path,
@@ -217,25 +216,125 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
-func (m Model) contentView() string {
-	var view string
+func (m Model) RightContentView() string {
+	visibleItems := ListItemsToActivities(m.list.VisibleItems())
+	sumRows := [][]string{
+		{"time", common.FormatTotalTime(ActivitiesTotalTime(visibleItems))},
+		{"distance", common.FormatTotalDistance(ActivitiesTotalDistances(visibleItems))},
+	}
+	var sumView string
+	label := "all"
+	if m.list.SettingFilter() {
+		label = "filtering"
+	} else if m.list.IsFiltered() {
+		label = "filtered"
+	}
+	sumView += lipgloss.NewStyle().
+		Bold(true).
+		PaddingRight(4).
+		Border(lipgloss.ASCIIBorder(), false, false, true, false).
+		Render(fmt.Sprintf("%s  activities", label))
+	sumView += br
+	sumTable := table.New().
+		Rows(sumRows...).
+		Border(lipgloss.Border{}).
+		StyleFunc(func(row, col int) lipgloss.Style {
+			switch {
+			case col == 0:
+				return lipgloss.NewStyle().PaddingRight(2).Bold(true)
+			default:
+				return emptyStyle
+			}
+		})
+	sumView += fmt.Sprintf("%s", sumTable)
+
+	var detailsView string
 	item := m.list.SelectedItem()
 	if item != nil && !m.list.SettingFilter() {
+		detailsView += lipgloss.NewStyle().
+			Bold(true).
+			PaddingRight(4).
+			Border(lipgloss.ASCIIBorder(), false, false, true, false).
+			MarginBottom(1).
+			Render("selected activity")
+
+		rows := [][]string{
+			{"date", "..."},
+			{"distance", "..."},
+			{"time", "..."},
+			{"speed", "..."},
+			{"elevation", "..."},
+			{"temperature", "..."},
+		}
+		var col = lipgloss.NewStyle().PaddingRight(5).Render
 		// Note: Item is a Pointer here !!!
 		if act, ok := item.(*common.Activity); ok {
 			if act, ok := asyncdata.Success[error, common.ActivityData](act.Data); ok {
-				view += "total time"
-				view += br
-				view += act.FormatTotalTime()
-				view += br
-				view += br
+				// date
+				rows[0][1] = common.FormatLocalTime(act.LocalTime)
+				// distance
+				rows[1][1] = common.FormatTotalDistance(act.TotalDistance())
+				// time
+				rows[2][1] = fmt.Sprintf(`active %s pause %s Σ %s`,
+					col(common.FormatTotalTime(act.TotalTime)),
+					col("31m 12s"),
+					"2h 31m 1s",
+				)
+				// speed
+				rows[3][1] = fmt.Sprintf(`%s%s%s`,
+					col("⌀ ..."), col("min ..."), "max ...")
+				// Elevation
+				rows[4][1] = fmt.Sprintf(`%s%s%s`,
+					col("Σ ..."), col("min ..."), "max ...")
+				// temperature
+				rows[5][1] = fmt.Sprintf(`%s%s%s`,
+					col("⌀ ..."), col("min ..."), "max ...")
+
+				// view += common.FormatLocalTime(act.LocalTime)
+				// view += br
+				// view += br
+				// view += common.FormatTotalTime(act.TotalTime)
+				// view += br
+				// view += common.FormatTotalDistance(act.TotalDistance())
+				// view += br
+				// view += br
 			}
-			view += "file"
-			view += br
-			view += filepath.Base(act.Path)
+			rows = append(rows,
+				[]string{"file", filepath.Base(act.Path)},
+			)
+			table := table.New().
+				Rows(rows...).
+				Border(lipgloss.Border{}).
+				StyleFunc(func(row, col int) lipgloss.Style {
+					switch {
+					case col == 0:
+						return lipgloss.NewStyle().PaddingRight(2).Bold(true)
+					case row == 2 || row == 5:
+						return lipgloss.NewStyle().MarginBottom(1)
+					default:
+						return lipgloss.NewStyle().PaddingRight(1)
+					}
+				})
+			detailsView += fmt.Sprintf("%s", table)
 		}
 
 	}
+
+	return lipgloss.JoinVertical(lipgloss.Left,
+		sumView,
+		lipgloss.NewStyle().
+			MarginTop(2).
+			// Border(lipgloss.ASCIIBorder(), true, false, false, false).
+			Render(detailsView),
+	)
+}
+
+func (m Model) LeftContentView() string {
+	var view string
+	title := lipgloss.NewStyle().Bold(true).Render("activities")
+	status := fmt.Sprintf("%d/%d", len(m.list.VisibleItems()), len(m.list.Items()))
+	m.list.Title = fmt.Sprintf("%s %s", title, status)
+	view += m.list.View()
 	return view
 }
 
@@ -274,9 +373,9 @@ func (m Model) footerView() string {
 			StyleFunc(func(row, col int) lipgloss.Style {
 				switch {
 				case col == 0:
-					return emptyStyle.PaddingRight(5).Bold(true)
+					return lipgloss.NewStyle().PaddingRight(5).Bold(true)
 				default:
-					return emptyStyle.PaddingRight(2)
+					return lipgloss.NewStyle().PaddingRight(2)
 				}
 			})
 		view += fmt.Sprintf("%s%s", table, br)
@@ -291,8 +390,10 @@ func (m Model) footerView() string {
 }
 
 func (m Model) View() string {
-	content := lipgloss.JoinHorizontal(lipgloss.Top, lContentStyle.Render(m.list.View()), rContentStyle.Render(
-		m.contentView()),
+
+	content := lipgloss.JoinHorizontal(lipgloss.Top,
+		leftContentStyle.Render(m.LeftContentView()),
+		rightContentStyle.Render(m.RightContentView()),
 	)
 	view := lipgloss.JoinVertical(lipgloss.Position(lipgloss.Left),
 		contentStyle.Render(content),
@@ -333,7 +434,7 @@ func parseFileCmd(act *common.Activity) tea.Cmd {
 				act.Data = asyncdata.NewSuccess[error, common.ActivityData](*data)
 			}
 			// FIXME: for debugging only
-			time.Sleep(50 * time.Millisecond)
+			// time.Sleep(50 * time.Millisecond)
 			resultCh <- parseFileResultMsg{act}
 			close(resultCh)
 		}()

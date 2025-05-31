@@ -1,9 +1,6 @@
 package common
 
 import (
-	"fmt"
-	"strconv"
-	"strings"
 	"time"
 
 	"github.com/sectore/fit-activities-tui/internal/asyncdata"
@@ -15,6 +12,14 @@ type ActivityData struct {
 	TotalDistances []uint32
 }
 
+func (act ActivityData) TotalDistance() uint32 {
+	var value uint32 = 0
+	for _, d := range act.TotalDistances {
+		value += d
+	}
+	return value
+}
+
 type ActivityAD = asyncdata.AsyncData[error, ActivityData]
 
 type Activity struct {
@@ -23,78 +28,40 @@ type Activity struct {
 }
 
 func (act Activity) FilterValue() string {
-	return act.FormatLocalTime()
+	var value string
+	if data, ok := asyncdata.Success[error, ActivityData](act.Data); ok {
+		value = FormatLocalTime(data.LocalTime)
+	}
+	return value
 
 }
 
 func (act Activity) Title() string {
-	return act.FormatLocalTime()
+	var title string
+	if data, ok := asyncdata.Success[error, ActivityData](act.Data); ok {
+		title = FormatLocalTime(data.LocalTime)
+	}
+	return title
 }
 
 func (act Activity) Description() string {
-	return act.FormatTotalDistance()
+	return FormatTotalDistance(act.TotalDistance())
 }
 
-func (act Activity) GetTotalDistance() uint32 {
-	var dist uint32 = 0
+func (act Activity) TotalDistance() uint32 {
+	var value uint32 = 0
 	if data, ok := asyncdata.Success[error, ActivityData](act.Data); ok {
-		for _, d := range data.TotalDistances {
-			dist += d
-		}
+		value += data.TotalDistance()
 	}
-	return dist
+	return value
 }
 
-func (act Activity) FormatTotalDistance() string {
-	var meters = act.GetTotalDistance() / 100
-	if meters >= 1000 {
-		km := float64(meters) / 1000
-		formatted := fmt.Sprintf("%.1f", km)
-		formatted = strings.TrimRight(formatted, "0")
-		formatted = strings.TrimRight(formatted, ".")
-		return formatted + "km"
-	} else {
-		return fmt.Sprintf("%dm", meters)
-	}
-}
-
-func (act Activity) FormatLocalTime() string {
+func (act Activity) GetTotalTime() uint32 {
+	var value uint32 = 0
 	if data, ok := asyncdata.Success[error, ActivityData](act.Data); ok {
-		// return data.LocalTime.Format("2006-01-02 15:04")
-		return data.LocalTime.Format("02.01.06 15:04")
+		value += data.TotalTime
 	}
-	return ""
-}
-
-func (data ActivityData) FormatTotalTime() string {
-	var s string
-	seconds := int(data.TotalTime / 1000)
-	if seconds < 60 {
-		// Format as ss
-		s = strconv.Itoa(seconds)
-	} else if seconds < 3600 {
-		// Format as mm:ss
-		minutes := seconds / 60
-		remainingSeconds := seconds % 60
-		s = fmt.Sprintf("%02dm %02ds", minutes, remainingSeconds)
-	} else if seconds < 86400 {
-		// Format as hh:mm:ss
-		hours := seconds / 3600
-		remainingSeconds := seconds % 3600
-		minutes := remainingSeconds / 60
-		seconds = remainingSeconds % 60
-		s = fmt.Sprintf("%02dh %02dm %02ds", hours, minutes, seconds)
-	} else {
-		// Format as dd:hh:mm:ss
-		days := seconds / 86400
-		remainingSeconds := seconds % 86400
-		hours := remainingSeconds / 3600
-		remainingSeconds = remainingSeconds % 3600
-		minutes := remainingSeconds / 60
-		seconds = remainingSeconds % 60
-		s = fmt.Sprintf("%dd %02dh %02dm %02ds", days, hours, minutes, seconds)
-	}
-	return s
+	return value
 }
 
 type Activities = []Activity
