@@ -34,14 +34,26 @@ func ParseFile(file string) (*common.ActivityData, error) {
 	}
 
 	distances := make([]uint32, len(act.Sessions))
-	for i, sess := range act.Sessions {
-		distances[i] = sess.TotalDistance
+	for i, ss := range act.Sessions {
+		distances[i] = ss.TotalDistance
+	}
+
+	temperatures := make([]common.Temperature, len(act.Records))
+	for i, rs := range act.Records {
+		temperatures[i] = rs.Temperature
+	}
+
+	speeds := make([]common.Speed, len(act.Records))
+	for i, rs := range act.Records {
+		speeds[i] = rs.Speed / 1000 // Record.Speed = Scale: 1000
 	}
 
 	var ad = common.ActivityData{
 		LocalTime:      act.Activity.LocalTimestamp,
 		TotalTime:      act.Activity.TotalTimerTime,
 		TotalDistances: distances,
+		Temperatures:   temperatures,
+		Speeds:         speeds,
 	}
 
 	return &ad, nil

@@ -6,18 +6,91 @@ import (
 	"github.com/sectore/fit-activities-tui/internal/asyncdata"
 )
 
+type Speed = uint16
+type Speeds = []Speed
+
+type Temperature = int8
+type Temperatures = []Temperature
+
 type ActivityData struct {
 	LocalTime      time.Time
 	TotalTime      uint32
 	TotalDistances []uint32
+	Speeds         Speeds
+	Temperatures   Temperatures
 }
 
 func (act ActivityData) TotalDistance() uint32 {
-	var value uint32 = 0
+	value := uint32(0)
 	for _, d := range act.TotalDistances {
 		value += d
 	}
 	return value
+}
+
+type SpeedStats struct {
+	Avg, Max Speed
+}
+
+func (act ActivityData) Speed() SpeedStats {
+	l := len(act.Speeds)
+
+	if l == 0 {
+		return SpeedStats{0, 0}
+	}
+
+	total := 0
+	count := 0
+	max := uint16(0)
+
+	for _, t := range act.Speeds {
+		// for any reason Wahoo ELMNT counts 127 at start
+		if t < 100 {
+			count += 1
+			total += int(t)
+
+			if max < t {
+				max = t
+			}
+		}
+	}
+
+	avg := total / count
+	return SpeedStats{Avg: uint16(avg), Max: max}
+}
+
+type TemperatureStats struct {
+	Avg, Min, Max Temperature
+}
+
+func (act ActivityData) Temperature() TemperatureStats {
+	l := len(act.Temperatures)
+
+	if l == 0 {
+		return TemperatureStats{0, 0, 0}
+	}
+
+	total := 0
+	count := 0
+	min := act.Temperatures[0]
+	max := int8(0)
+
+	for _, t := range act.Temperatures {
+		// for any reason Wahoo ELMNT counts 127 at start
+		if t < 100 {
+			count += 1
+			total += int(t)
+			if t < min {
+				min = t
+			}
+			if max < t {
+				max = t
+			}
+		}
+	}
+
+	avg := total / count
+	return TemperatureStats{Avg: int8(avg), Max: max, Min: min}
 }
 
 type ActivityAD = asyncdata.AsyncData[error, ActivityData]

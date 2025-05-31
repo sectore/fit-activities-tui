@@ -60,3 +60,11 @@ func FormatTotalDistance(dist uint32) string {
 		return fmt.Sprintf("%dm", meters)
 	}
 }
+
+func FormatTemperature(t Temperature) string {
+	return fmt.Sprintf("%d°C", t)
+}
+
+func FormatSpeed(s Speed) string {
+	return fmt.Sprintf("%.1fkm/h", float32(s)*3.6)
+}

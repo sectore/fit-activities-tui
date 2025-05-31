@@ -281,23 +281,18 @@ func (m Model) RightContentView() string {
 					"2h 31m 1s",
 				)
 				// speed
-				rows[3][1] = fmt.Sprintf(`%s%s%s`,
-					col("⌀ ..."), col("min ..."), "max ...")
+				rows[3][1] = fmt.Sprintf(`⌀ %s max %s`,
+					col(common.FormatSpeed(act.Speed().Avg)),
+					common.FormatSpeed(act.Speed().Max))
+
 				// Elevation
 				rows[4][1] = fmt.Sprintf(`%s%s%s`,
 					col("Σ ..."), col("min ..."), "max ...")
 				// temperature
-				rows[5][1] = fmt.Sprintf(`%s%s%s`,
-					col("⌀ ..."), col("min ..."), "max ...")
-
-				// view += common.FormatLocalTime(act.LocalTime)
-				// view += br
-				// view += br
-				// view += common.FormatTotalTime(act.TotalTime)
-				// view += br
-				// view += common.FormatTotalDistance(act.TotalDistance())
-				// view += br
-				// view += br
+				rows[5][1] = fmt.Sprintf(`⌀ %s min %s max %s`,
+					col(common.FormatTemperature(act.Temperature().Avg)),
+					col(common.FormatTemperature(act.Temperature().Min)),
+					common.FormatTemperature(act.Temperature().Max))
 			}
 			rows = append(rows,
 				[]string{"file", filepath.Base(act.Path)},
