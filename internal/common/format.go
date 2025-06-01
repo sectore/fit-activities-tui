@@ -72,7 +72,3 @@ func FormatAscent(v Ascent) string {
 func FormatDescent(v Descent) string {
 	return fmt.Sprintf("-%dm", v)
 }
-
-func FormatSpeed(s Speed) string {
-	return fmt.Sprintf("%.1fkm/h", float32(s)*3.6)
-}

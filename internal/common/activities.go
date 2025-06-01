@@ -7,9 +7,6 @@ import (
 	"github.com/sectore/fit-activities-tui/internal/asyncdata"
 )
 
-type Speed = uint16
-type Speeds = []Speed
-
 type Temperature = int8
 type Temperatures = []Temperature
 
@@ -21,21 +18,38 @@ type Descents = []Descent
 
 type GpsAccuracy struct{ Value uint8 }
 
+func NewGpsAccuracy(value uint8) GpsAccuracy {
+	return GpsAccuracy{Value: value}
+}
+
 func (ga GpsAccuracy) Format() string {
 	return fmt.Sprintf("%dm", ga.Value)
 }
 
 type GpsAccuracyStat struct {
-	Avg GpsAccuracy
-	Min GpsAccuracy
-	Max GpsAccuracy
+	Avg, Min, Max GpsAccuracy
+}
+
+type Speed struct{ Value uint16 }
+
+func NewSpeed(value uint16) Speed {
+	return Speed{Value: value}
+}
+
+func (s Speed) Format() string {
+	// return fmt.Sprintf("%dm/s %.1fkm/h", s.Value, float32(s.Value)*3.6)
+	return fmt.Sprintf("%.1fkm/h", float32(s.Value)*3.6)
+}
+
+type SpeedStats struct {
+	Avg, Max Speed
 }
 
 type ActivityData struct {
 	LocalTime      time.Time
 	TotalTime      uint32
 	TotalDistances []uint32
-	Speeds         Speeds
+	Speed          SpeedStats
 	Temperatures   Temperatures
 	Descents       Descents
 	Ascents        Ascents
@@ -68,34 +82,6 @@ func (act ActivityData) TotalAscant() Ascent {
 		value += d
 	}
 	return value / uint16(l)
-}
-
-type SpeedStats struct {
-	Avg, Max Speed
-}
-
-func (act ActivityData) Speed() SpeedStats {
-	l := len(act.Speeds)
-
-	if l == 0 {
-		return SpeedStats{0, 0}
-	}
-
-	total := 0
-	count := 0
-	max := uint16(0)
-
-	for _, t := range act.Speeds {
-
-		count += 1
-		total += int(t)
-
-		if max < t {
-			max = t
-		}
-	}
-	avg := total / count
-	return SpeedStats{Avg: uint16(avg), Max: max}
 }
 
 type TemperatureStats struct {

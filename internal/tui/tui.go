@@ -285,8 +285,8 @@ func (m Model) RightContentView() string {
 				)
 				// speed
 				rows[3][1] = fmt.Sprintf(`⌀ %s max %s`,
-					col(common.FormatSpeed(act.Speed().Avg)),
-					common.FormatSpeed(act.Speed().Max))
+					col(act.Speed.Avg.Format()),
+					act.Speed.Max.Format())
 
 				// Elevation
 				rows[4][1] = fmt.Sprintf(`%s %s`,
