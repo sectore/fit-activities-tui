@@ -1,6 +1,7 @@
 package common
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/sectore/fit-activities-tui/internal/asyncdata"
@@ -18,6 +19,18 @@ type Ascents = []Ascent
 type Descent = uint16
 type Descents = []Descent
 
+type GpsAccuracy struct{ Value uint8 }
+
+func (ga GpsAccuracy) Format() string {
+	return fmt.Sprintf("%dm", ga.Value)
+}
+
+type GpsAccuracyStat struct {
+	Avg GpsAccuracy
+	Min GpsAccuracy
+	Max GpsAccuracy
+}
+
 type ActivityData struct {
 	LocalTime      time.Time
 	TotalTime      uint32
@@ -28,6 +41,7 @@ type ActivityData struct {
 	Ascents        Ascents
 	NoSessions     uint32
 	NoRecords      uint32
+	GpsAccuracy    GpsAccuracyStat
 }
 
 func (act ActivityData) TotalDistance() uint32 {
@@ -72,17 +86,14 @@ func (act ActivityData) Speed() SpeedStats {
 	max := uint16(0)
 
 	for _, t := range act.Speeds {
-		// for any reason Wahoo ELMNT counts 127 at start
-		if t < 100 {
-			count += 1
-			total += int(t)
 
-			if max < t {
-				max = t
-			}
+		count += 1
+		total += int(t)
+
+		if max < t {
+			max = t
 		}
 	}
-
 	avg := total / count
 	return SpeedStats{Avg: uint16(avg), Max: max}
 }

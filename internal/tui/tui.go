@@ -265,6 +265,7 @@ func (m Model) RightContentView() string {
 			{"speed", "..."},
 			{"elevation", "..."},
 			{"temperature", "..."},
+			{"gps accuracy", "..."},
 			{"# sessions", "..."},
 			{"# records", "..."},
 		}
@@ -297,10 +298,16 @@ func (m Model) RightContentView() string {
 					col(common.FormatTemperature(act.Temperature().Avg)),
 					col(common.FormatTemperature(act.Temperature().Min)),
 					common.FormatTemperature(act.Temperature().Max))
+				// gps
+				rows[6][1] = fmt.Sprintf(`⌀ %s best %s worse %s`,
+					col(act.GpsAccuracy.Avg.Format()),
+					col(act.GpsAccuracy.Min.Format()),
+					act.GpsAccuracy.Max.Format(),
+				)
 				// no. sessions
-				rows[6][1] = fmt.Sprintf(`%d`, act.NoSessions)
+				rows[7][1] = fmt.Sprintf(`%d`, act.NoSessions)
 				// no. records
-				rows[7][1] = fmt.Sprintf(`%d`, act.NoRecords)
+				rows[8][1] = fmt.Sprintf(`%d`, act.NoRecords)
 			}
 			rows = append(rows,
 				[]string{"file", filepath.Base(act.Path)},
@@ -312,7 +319,7 @@ func (m Model) RightContentView() string {
 					switch {
 					case col == 0:
 						return lipgloss.NewStyle().PaddingRight(2).Bold(true)
-					case row == 2 || row == 5:
+					case row == 2 || row == 6:
 						return lipgloss.NewStyle().MarginBottom(1)
 					default:
 						return lipgloss.NewStyle().PaddingRight(1)
