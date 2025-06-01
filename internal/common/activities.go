@@ -37,8 +37,7 @@ func NewSpeed(value uint16) Speed {
 }
 
 func (s Speed) Format() string {
-	// return fmt.Sprintf("%dm/s %.1fkm/h", s.Value, float32(s.Value)*3.6)
-	return fmt.Sprintf("%.1fkm/h", float32(s.Value)*3.6)
+	return fmt.Sprintf("%.1fkm/h", float64(s.Value)*3.6/1000)
 }
 
 type SpeedStats struct {
