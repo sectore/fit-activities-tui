@@ -265,6 +265,8 @@ func (m Model) RightContentView() string {
 			{"speed", "..."},
 			{"elevation", "..."},
 			{"temperature", "..."},
+			{"# sessions", "..."},
+			{"# records", "..."},
 		}
 		var col = lipgloss.NewStyle().PaddingRight(3).Render
 		// Note: Item is a Pointer here !!!
@@ -295,6 +297,10 @@ func (m Model) RightContentView() string {
 					col(common.FormatTemperature(act.Temperature().Avg)),
 					col(common.FormatTemperature(act.Temperature().Min)),
 					common.FormatTemperature(act.Temperature().Max))
+				// no. sessions
+				rows[6][1] = fmt.Sprintf(`%d`, act.NoSessions)
+				// no. records
+				rows[7][1] = fmt.Sprintf(`%d`, act.NoRecords)
 			}
 			rows = append(rows,
 				[]string{"file", filepath.Base(act.Path)},

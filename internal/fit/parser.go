@@ -33,27 +33,30 @@ func ParseFile(file string) (*common.ActivityData, error) {
 		return nil, errors.New("expected an Activity")
 	}
 
-	distances := make([]uint32, len(act.Sessions))
+	noSessions := len(act.Sessions)
+	noRecords := len(act.Records)
+
+	distances := make([]uint32, noSessions)
 	for i, ss := range act.Sessions {
 		distances[i] = ss.TotalDistance
 	}
 
-	ascents := make([]uint16, len(act.Sessions))
+	ascents := make([]uint16, noSessions)
 	for i, ss := range act.Sessions {
 		ascents[i] = ss.TotalAscent
 	}
 
-	descents := make([]uint16, len(act.Sessions))
+	descents := make([]uint16, noSessions)
 	for i, ss := range act.Sessions {
 		descents[i] = ss.TotalDescent
 	}
 
-	temperatures := make([]common.Temperature, len(act.Records))
+	temperatures := make([]common.Temperature, noRecords)
 	for i, rs := range act.Records {
 		temperatures[i] = rs.Temperature
 	}
 
-	speeds := make([]common.Speed, len(act.Records))
+	speeds := make([]common.Speed, noRecords)
 	for i, rs := range act.Records {
 		speeds[i] = rs.Speed / 1000 // Record.Speed = Scale: 1000
 	}
@@ -66,6 +69,8 @@ func ParseFile(file string) (*common.ActivityData, error) {
 		Speeds:         speeds,
 		Descents:       descents,
 		Ascents:        ascents,
+		NoSessions:     uint32(noSessions),
+		NoRecords:      uint32(noRecords),
 	}
 
 	return &ad, nil

@@ -26,6 +26,8 @@ type ActivityData struct {
 	Temperatures   Temperatures
 	Descents       Descents
 	Ascents        Ascents
+	NoSessions     uint32
+	NoRecords      uint32
 }
 
 func (act ActivityData) TotalDistance() uint32 {
