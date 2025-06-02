@@ -219,21 +219,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m Model) RightContentView() string {
 	visibleItems := ListItemsToActivities(m.list.VisibleItems())
 	sumRows := [][]string{
-		{"time", common.FormatTotalTime(ActivitiesTotalTime(visibleItems))},
+		{"time", ActivitiesTotalTime(visibleItems).Format()},
 		{"distance", common.FormatTotalDistance(ActivitiesTotalDistances(visibleItems))},
 	}
 	var sumView string
-	label := ""
-	// if m.list.SettingFilter() {
-	// 	label = "filtering"
-	// } else if m.list.IsFiltered() {
-	// 	label = "filtered"
-	// }
 	sumView += lipgloss.NewStyle().
 		Bold(true).
 		PaddingRight(4).
 		Border(lipgloss.ASCIIBorder(), false, false, true, false).
-		Render(fmt.Sprintf("Σ%s activities", label))
+		Render("Σ activities")
 	sumView += br
 	sumTable := table.New().
 		Rows(sumRows...).
@@ -279,9 +273,9 @@ func (m Model) RightContentView() string {
 				rows[1][1] = common.FormatTotalDistance(act.TotalDistance())
 				// time
 				rows[2][1] = fmt.Sprintf(`active %s pause %s Σ %s`,
-					col(common.FormatTotalTime(act.TotalTime)),
-					col("31m 12s"),
-					"2h 31m 1s",
+					col(act.Time.Active.Format()),
+					col(act.Time.Pause.Format()),
+					act.Time.Total.Format(),
 				)
 				// speed
 				rows[3][1] = fmt.Sprintf(`⌀ %s %s %s`,

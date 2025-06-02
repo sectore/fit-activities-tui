@@ -79,6 +79,26 @@ func parseGpsAccurancies(records []*mesgdef.Record) common.GpsAccuracyStat {
 	return gpsAccurancy
 }
 
+func parseTime(ss []*mesgdef.Session) common.TimeStats {
+	time := common.TimeStats{
+		Total:  common.NewTime(0),
+		Active: common.NewTime(0),
+		Pause:  common.NewTime(0),
+	}
+	for _, s := range ss {
+		total := s.TotalElapsedTime
+		if total != basetype.Uint32Invalid {
+			time.Total.Value += total
+		}
+		active := s.TotalTimerTime
+		if active != basetype.Uint32Invalid {
+			time.Active.Value += active
+		}
+	}
+	time.Pause.Value = time.Total.Value - time.Active.Value
+	return time
+}
+
 func ParseFile(file string) (*common.ActivityData, error) {
 	f, err := os.Open(file)
 	if err != nil {
@@ -128,7 +148,7 @@ func ParseFile(file string) (*common.ActivityData, error) {
 
 	var ad = common.ActivityData{
 		LocalTime:      act.Activity.LocalTimestamp,
-		TotalTime:      act.Activity.TotalTimerTime,
+		Time:           parseTime(act.Sessions),
 		TotalDistances: distances,
 		Temperatures:   temperatures,
 		Speed:          parseSpeed(act.Records),

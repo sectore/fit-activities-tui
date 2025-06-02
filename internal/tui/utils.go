@@ -45,12 +45,12 @@ func ActivitiesTotalDistances(acts common.Activities) uint32 {
 	return dist
 }
 
-func ActivitiesTotalTime(acts common.Activities) uint32 {
-	var total uint32
+func ActivitiesTotalTime(acts common.Activities) common.Time {
+	var value uint32
 	for _, act := range acts {
-		total += act.GetTotalTime()
+		value += act.GetTotalTime().Value
 	}
-	return total
+	return common.NewTime(value)
 }
 
 func ListItemsToActivities(items []list.Item) common.Activities {

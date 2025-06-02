@@ -2,6 +2,7 @@ package common
 
 import (
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/sectore/fit-activities-tui/internal/asyncdata"
@@ -44,9 +45,62 @@ type SpeedStats struct {
 	Avg, Max Speed
 }
 
+type Time struct{ Value uint32 }
+
+func NewTime(value uint32) Time {
+	return Time{Value: value}
+}
+
+type TimeStats struct {
+	Active Time
+	Total  Time
+	Pause  Time
+}
+
+func (time Time) Format() string {
+	formatValue := func(value uint32, padZero bool) string {
+		if padZero || value >= 10 {
+			return fmt.Sprintf("%02d", value)
+		}
+		return fmt.Sprintf("%d", value)
+	}
+
+	seconds := time.Value / 1000
+	if seconds < 60 {
+		return strconv.Itoa(int(seconds))
+	} else if seconds < 3600 {
+		minutes := seconds / 60
+		remainingSeconds := seconds % 60
+		return fmt.Sprintf("%sm %ss",
+			formatValue(minutes, false),
+			formatValue(remainingSeconds, remainingSeconds >= 10))
+	} else if seconds < 86400 {
+		hours := seconds / 3600
+		remainingSeconds := seconds % 3600
+		minutes := remainingSeconds / 60
+		seconds = remainingSeconds % 60
+		return fmt.Sprintf("%sh %sm %ss",
+			formatValue(hours, false),
+			formatValue(minutes, false),
+			formatValue(seconds, seconds >= 10))
+	} else {
+		days := seconds / 86400
+		remainingSeconds := seconds % 86400
+		hours := remainingSeconds / 3600
+		remainingSeconds = remainingSeconds % 3600
+		minutes := remainingSeconds / 60
+		seconds = remainingSeconds % 60
+		return fmt.Sprintf("%dd %sh %sm %ss",
+			days,
+			formatValue(hours, false),
+			formatValue(minutes, false),
+			formatValue(seconds, seconds >= 10))
+	}
+}
+
 type ActivityData struct {
 	LocalTime      time.Time
-	TotalTime      uint32
+	Time           TimeStats
 	TotalDistances []uint32
 	Speed          SpeedStats
 	Temperatures   Temperatures
@@ -153,12 +207,12 @@ func (act Activity) TotalDistance() uint32 {
 	return value
 }
 
-func (act Activity) GetTotalTime() uint32 {
+func (act Activity) GetTotalTime() Time {
 	var value uint32 = 0
 	if data, ok := asyncdata.Success(act.Data); ok {
-		value += data.TotalTime
+		value += data.Time.Total.Value
 	}
-	return value
+	return NewTime(value)
 }
 
 type Activities = []Activity
