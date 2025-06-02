@@ -2,7 +2,6 @@ package fit
 
 import (
 	"errors"
-	"math"
 	"os"
 
 	"github.com/muktihari/fit/decoder"
@@ -13,72 +12,70 @@ import (
 )
 
 func parseSpeed(records []*mesgdef.Record) common.SpeedStats {
-	var list []uint16
+	speed := common.SpeedStats{
+		Avg: common.NewSpeed(0),
+		Max: common.NewSpeed(0),
+	}
+	var count, total uint
 	for _, rs := range records {
 		value := rs.Speed
 		// don't count invalid values
 		if value != basetype.Uint16Invalid {
-			list = append(list, value)
+			value_f := float32(rs.Speed)
+			// compare max
+			if speed.Max.Value < value_f {
+				speed.Max.Value = value_f
+			}
+			count += 1
+			total += uint(value)
 		}
 	}
-
-	l := len(list)
-
-	if l == 0 {
-		return common.SpeedStats{
-			Avg: common.NewSpeed(0),
-			Max: common.NewSpeed(0),
-		}
+	// skip if no valid values found
+	if count == 0 {
+		return speed
 	}
 
-	var total uint64
-	var max uint16
-	for _, value := range list {
-		total += uint64(value)
-		if max < value {
-			max = value
-		}
-	}
-	avg := math.Round(float64(total) / float64(l))
-	return common.SpeedStats{
-		Avg: common.NewSpeed(uint16(avg)),
-		Max: common.NewSpeed(max),
-	}
+	avg := float32(total / count)
+	speed.Avg.Value = avg
+	return speed
 
 }
 
 func parseGpsAccurancies(records []*mesgdef.Record) common.GpsAccuracyStat {
-
-	var list []uint8
+	// start w/ empty stats
+	gpsAccurancy := common.GpsAccuracyStat{
+		Avg: common.NewGpsAccuracy(0),
+		Min: common.NewGpsAccuracy(0),
+		Max: common.NewGpsAccuracy(0),
+	}
+	var sum, count uint
 	for _, record := range records {
 		value := record.GpsAccuracy
 		// don't count invalid values
 		if value != basetype.Uint8Invalid {
-			list = append(list, value)
+			value_f := float32(value)
+			// override default zero value
+			if count == 0 {
+				gpsAccurancy.Min.Value = value_f
+			}
+			// compare min
+			if value_f < gpsAccurancy.Min.Value {
+				gpsAccurancy.Min.Value = value_f
+			}
+			// compare max
+			if value_f > gpsAccurancy.Max.Value {
+				gpsAccurancy.Max.Value = value_f
+			}
+			count += 1
+			sum += uint(value)
 		}
 	}
-	min := common.NewGpsAccuracy(0)
-	if len(list) > 0 {
-		min = common.NewGpsAccuracy(list[0])
+	// skip if no valid values found
+	if count == 0 {
+		return gpsAccurancy
 	}
-	gpsAccurancy := common.GpsAccuracyStat{
-		Avg: common.NewGpsAccuracy(0),
-		Min: min,
-		Max: common.NewGpsAccuracy(0),
-	}
-	total := int(0)
-	for _, value := range list {
-		total += int(value)
-		if value < gpsAccurancy.Min.Value {
-			gpsAccurancy.Min.Value = value
-		}
-		if value > gpsAccurancy.Max.Value {
-			gpsAccurancy.Max.Value = value
-		}
 
-	}
-	gpsAccurancy.Avg.Value = uint8(total / len(list))
-
+	gpsAccurancy.Avg.Value = float32(sum / count)
 	return gpsAccurancy
 }
 

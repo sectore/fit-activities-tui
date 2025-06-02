@@ -16,28 +16,28 @@ type Ascents = []Ascent
 type Descent = uint16
 type Descents = []Descent
 
-type GpsAccuracy struct{ Value uint8 }
+type GpsAccuracy struct{ Value float32 }
 
-func NewGpsAccuracy(value uint8) GpsAccuracy {
+func NewGpsAccuracy(value float32) GpsAccuracy {
 	return GpsAccuracy{Value: value}
 }
 
 func (ga GpsAccuracy) Format() string {
-	return fmt.Sprintf("%dm", ga.Value)
+	return fmt.Sprintf("%.1fm", ga.Value)
 }
 
 type GpsAccuracyStat struct {
 	Avg, Min, Max GpsAccuracy
 }
 
-type Speed struct{ Value uint16 }
+type Speed struct{ Value float32 }
 
-func NewSpeed(value uint16) Speed {
+func NewSpeed(value float32) Speed {
 	return Speed{Value: value}
 }
 
 func (s Speed) Format() string {
-	return fmt.Sprintf("%.1fkm/h", float64(s.Value)*3.6/1000)
+	return fmt.Sprintf("%.1fkm/h", s.Value*3.6/1000)
 }
 
 type SpeedStats struct {
