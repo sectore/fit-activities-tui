@@ -54,7 +54,6 @@ func ActivitiesTotalTime(acts common.Activities) common.Time {
 }
 
 func ListItemsToActivities(items []list.Item) common.Activities {
-	// acts := make(common.Activities, len(items))
 	var acts common.Activities
 	for _, item := range items {
 		if act, ok := item.(*common.Activity); ok {

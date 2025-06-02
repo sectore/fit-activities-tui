@@ -79,7 +79,7 @@ func InitialModel(path string) Model {
 	list.Paginator = p
 
 	ls := list.Styles
-	ls.Title = emptyStyle // override to use custom style for custom title
+	ls.Title = lipgloss.NewStyle().Bold(true)
 	ls.DividerDot = list.Styles.DividerDot.Foreground(noColor)
 	ls.StatusBar = list.Styles.StatusBar.Foreground(noColor)
 	ls.StatusEmpty = emptyStyle
@@ -90,7 +90,6 @@ func InitialModel(path string) Model {
 	list.Styles = ls
 
 	list.SetSpinner(spinner.MiniDot)
-	// list.SetStatusBarItemName("activity", "activities")
 	list.SetShowHelp(false)
 	list.SetShowTitle(true)
 	list.SetShowStatusBar(false)
@@ -335,7 +334,6 @@ func (m Model) RightContentView() string {
 		sumView,
 		lipgloss.NewStyle().
 			MarginTop(2).
-			// Border(lipgloss.ASCIIBorder(), true, false, false, false).
 			Render(detailsView),
 	)
 }
@@ -352,7 +350,7 @@ func (m Model) LeftContentView() string {
 	if m.list.IsFiltered() && noVisibleActs != noActs {
 		labelNoActs = fmt.Sprintf("%d/%d", noVisibleActs, len(m.list.Items()))
 	}
-	m.list.Title = lipgloss.NewStyle().Bold(true).Render(fmt.Sprintf("%s %s", labelNoActs, label))
+	m.list.Title = fmt.Sprintf("%s %s", labelNoActs, label)
 	view += m.list.View()
 	return view
 }

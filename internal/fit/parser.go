@@ -11,17 +11,17 @@ import (
 	"github.com/sectore/fit-activities-tui/internal/common"
 )
 
-func parseSpeed(records []*mesgdef.Record) common.SpeedStats {
+func parseSpeed(rs []*mesgdef.Record) common.SpeedStats {
 	speed := common.SpeedStats{
 		Avg: common.NewSpeed(0),
 		Max: common.NewSpeed(0),
 	}
 	var count, total uint
-	for _, rs := range records {
-		value := rs.Speed
+	for _, r := range rs {
+		value := r.Speed
 		// don't count invalid values
 		if value != basetype.Uint16Invalid {
-			value_f := float32(rs.Speed)
+			value_f := float32(r.Speed)
 			// compare max
 			if speed.Max.Value < value_f {
 				speed.Max.Value = value_f
@@ -41,7 +41,7 @@ func parseSpeed(records []*mesgdef.Record) common.SpeedStats {
 
 }
 
-func parseGpsAccurancies(records []*mesgdef.Record) common.GpsAccuracyStat {
+func parseGpsAccurancies(rs []*mesgdef.Record) common.GpsAccuracyStat {
 	// start w/ empty stats
 	gpsAccurancy := common.GpsAccuracyStat{
 		Avg: common.NewGpsAccuracy(0),
@@ -49,8 +49,8 @@ func parseGpsAccurancies(records []*mesgdef.Record) common.GpsAccuracyStat {
 		Max: common.NewGpsAccuracy(0),
 	}
 	var sum, count uint
-	for _, record := range records {
-		value := record.GpsAccuracy
+	for _, r := range rs {
+		value := r.GpsAccuracy
 		// don't count invalid values
 		if value != basetype.Uint8Invalid {
 			value_f := float32(value)
@@ -104,12 +104,12 @@ func parseElevation(ss []*mesgdef.Session) common.ElevationStats {
 		Descents: common.NewElevation(0),
 	}
 
-	for _, ss := range ss {
-		value := ss.TotalAscent
+	for _, s := range ss {
+		value := s.TotalAscent
 		if value != basetype.Uint16Invalid {
 			elevation.Ascents.Value += value
 		}
-		value = ss.TotalDescent
+		value = s.TotalDescent
 		if value != basetype.Uint16Invalid {
 			elevation.Descents.Value += value
 		}
@@ -146,16 +146,16 @@ func ParseFile(file string) (*common.ActivityData, error) {
 	noRecords := len(act.Records)
 
 	distances := make([]uint32, noSessions)
-	for i, ss := range act.Sessions {
-		distances[i] = ss.TotalDistance
+	for i, s := range act.Sessions {
+		distances[i] = s.TotalDistance
 	}
 
 	temperatures := make([]common.Temperature, noRecords)
-	for i, rs := range act.Records {
-		temperatures[i] = rs.Temperature
+	for i, r := range act.Records {
+		temperatures[i] = r.Temperature
 	}
 
-	var ad = common.ActivityData{
+	var activityData = common.ActivityData{
 		LocalTime:      act.Activity.LocalTimestamp,
 		Time:           parseTime(act.Sessions),
 		TotalDistances: distances,
@@ -167,5 +167,5 @@ func ParseFile(file string) (*common.ActivityData, error) {
 		GpsAccuracy:    parseGpsAccurancies(act.Records),
 	}
 
-	return &ad, nil
+	return &activityData, nil
 }
