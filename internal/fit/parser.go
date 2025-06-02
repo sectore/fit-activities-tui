@@ -98,6 +98,25 @@ func parseTime(ss []*mesgdef.Session) common.TimeStats {
 	time.Pause.Value = time.Total.Value - time.Active.Value
 	return time
 }
+func parseElevation(ss []*mesgdef.Session) common.ElevationStats {
+	elevation := common.ElevationStats{
+		Ascents:  common.NewElevation(0),
+		Descents: common.NewElevation(0),
+	}
+
+	for _, ss := range ss {
+		value := ss.TotalAscent
+		if value != basetype.Uint16Invalid {
+			elevation.Ascents.Value += value
+		}
+		value = ss.TotalDescent
+		if value != basetype.Uint16Invalid {
+			elevation.Descents.Value += value
+		}
+	}
+
+	return elevation
+}
 
 func ParseFile(file string) (*common.ActivityData, error) {
 	f, err := os.Open(file)
@@ -131,16 +150,6 @@ func ParseFile(file string) (*common.ActivityData, error) {
 		distances[i] = ss.TotalDistance
 	}
 
-	ascents := make([]uint16, noSessions)
-	for i, ss := range act.Sessions {
-		ascents[i] = ss.TotalAscent
-	}
-
-	descents := make([]uint16, noSessions)
-	for i, ss := range act.Sessions {
-		descents[i] = ss.TotalDescent
-	}
-
 	temperatures := make([]common.Temperature, noRecords)
 	for i, rs := range act.Records {
 		temperatures[i] = rs.Temperature
@@ -152,8 +161,7 @@ func ParseFile(file string) (*common.ActivityData, error) {
 		TotalDistances: distances,
 		Temperatures:   temperatures,
 		Speed:          parseSpeed(act.Records),
-		Descents:       descents,
-		Ascents:        ascents,
+		Elevation:      parseElevation(act.Sessions),
 		NoSessions:     uint32(noSessions),
 		NoRecords:      uint32(noRecords),
 		GpsAccuracy:    parseGpsAccurancies(act.Records),

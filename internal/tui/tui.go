@@ -286,9 +286,9 @@ func (m Model) RightContentView() string {
 				// Elevation
 				rows[4][1] = fmt.Sprintf(`%s %s %s %s`,
 					arrowTop,
-					col(common.FormatAscent(act.TotalAscant())),
+					col(act.Elevation.Ascents.Format()),
 					arrowDown,
-					common.FormatDescent(act.TotalDescant()),
+					act.Elevation.Descents.Format(),
 				)
 				// temperature
 				rows[5][1] = fmt.Sprintf(`⌀ %s %s %s %s %s`,

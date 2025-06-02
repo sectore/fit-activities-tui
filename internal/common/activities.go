@@ -11,12 +11,6 @@ import (
 type Temperature = int8
 type Temperatures = []Temperature
 
-type Ascent = uint16
-type Ascents = []Ascent
-
-type Descent = uint16
-type Descents = []Descent
-
 type GpsAccuracy struct{ Value float32 }
 
 func NewGpsAccuracy(value float32) GpsAccuracy {
@@ -98,14 +92,28 @@ func (time Time) Format() string {
 	}
 }
 
+type Elevation struct{ Value uint16 }
+
+func NewElevation(value uint16) Elevation {
+	return Elevation{Value: value}
+}
+
+func (e Elevation) Format() string {
+	return fmt.Sprintf("%dm", e.Value)
+}
+
+type ElevationStats struct {
+	Descents Elevation
+	Ascents  Elevation
+}
+
 type ActivityData struct {
 	LocalTime      time.Time
 	Time           TimeStats
 	TotalDistances []uint32
 	Speed          SpeedStats
 	Temperatures   Temperatures
-	Descents       Descents
-	Ascents        Ascents
+	Elevation      ElevationStats
 	NoSessions     uint32
 	NoRecords      uint32
 	GpsAccuracy    GpsAccuracyStat
@@ -117,24 +125,6 @@ func (act ActivityData) TotalDistance() uint32 {
 		value += d
 	}
 	return value
-}
-
-func (act ActivityData) TotalDescant() Descent {
-	l := len(act.Descents)
-	value := Descent(0)
-	for _, d := range act.Descents {
-		value += d
-	}
-	return value / uint16(l)
-}
-
-func (act ActivityData) TotalAscant() Ascent {
-	value := Ascent(0)
-	l := len(act.Ascents)
-	for _, d := range act.Ascents {
-		value += d
-	}
-	return value / uint16(l)
 }
 
 type TemperatureStats struct {

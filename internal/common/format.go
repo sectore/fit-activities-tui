@@ -32,11 +32,3 @@ func FormatTotalDistance(dist uint32) string {
 func FormatTemperature(t Temperature) string {
 	return fmt.Sprintf("%d°C", t)
 }
-
-func FormatAscent(v Ascent) string {
-	return fmt.Sprintf("%dm", v)
-}
-
-func FormatDescent(v Descent) string {
-	return fmt.Sprintf("%dm", v)
-}
