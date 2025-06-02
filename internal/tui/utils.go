@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"github.com/charmbracelet/bubbles/list"
 	"github.com/sectore/fit-activities-tui/internal/asyncdata"
 	"github.com/sectore/fit-activities-tui/internal/common"
 )
@@ -34,4 +35,30 @@ func ActivitiesFailures(acts common.Activities) int {
 		}
 	}
 	return count
+}
+
+func ActivitiesTotalDistances(acts common.Activities) uint32 {
+	var dist uint32
+	for _, act := range acts {
+		dist += act.TotalDistance()
+	}
+	return dist
+}
+
+func ActivitiesTotalTime(acts common.Activities) common.Time {
+	var value uint32
+	for _, act := range acts {
+		value += act.GetTotalTime().Value
+	}
+	return common.NewTime(value)
+}
+
+func ListItemsToActivities(items []list.Item) common.Activities {
+	var acts common.Activities
+	for _, item := range items {
+		if act, ok := item.(*common.Activity); ok {
+			acts = append(acts, *act)
+		}
+	}
+	return acts
 }

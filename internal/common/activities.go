@@ -3,16 +3,146 @@ package common
 import (
 	"fmt"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/sectore/fit-activities-tui/internal/asyncdata"
 )
 
+type Temperature = int8
+type Temperatures = []Temperature
+
+type GpsAccuracy struct{ Value float32 }
+
+func NewGpsAccuracy(value float32) GpsAccuracy {
+	return GpsAccuracy{Value: value}
+}
+
+func (ga GpsAccuracy) Format() string {
+	return fmt.Sprintf("%.1fm", ga.Value)
+}
+
+type GpsAccuracyStat struct {
+	Avg, Min, Max GpsAccuracy
+}
+
+type Speed struct{ Value float32 }
+
+func NewSpeed(value float32) Speed {
+	return Speed{Value: value}
+}
+
+func (s Speed) Format() string {
+	return fmt.Sprintf("%.1fkm/h", s.Value*3.6/1000)
+}
+
+type SpeedStats struct {
+	Avg, Max Speed
+}
+
+type Time struct{ Value uint32 }
+
+func NewTime(value uint32) Time {
+	return Time{Value: value}
+}
+
+type TimeStats struct {
+	Active Time
+	Total  Time
+	Pause  Time
+}
+
+func (time Time) Format() string {
+	seconds := time.Value / 1000
+	if seconds < 60 {
+		return strconv.Itoa(int(seconds))
+	} else if seconds < 3600 {
+		minutes := seconds / 60
+		remainingSeconds := seconds % 60
+		return fmt.Sprintf("%dm %ds", minutes, remainingSeconds)
+	} else if seconds < 86400 {
+		hours := seconds / 3600
+		remainingSeconds := seconds % 3600
+		minutes := remainingSeconds / 60
+		seconds = remainingSeconds % 60
+		return fmt.Sprintf("%dh %dm %ds", hours, minutes, seconds)
+	} else {
+		days := seconds / 86400
+		remainingSeconds := seconds % 86400
+		hours := remainingSeconds / 3600
+		remainingSeconds = remainingSeconds % 3600
+		minutes := remainingSeconds / 60
+		seconds = remainingSeconds % 60
+		return fmt.Sprintf("%dd %dh %dm %ds", days, hours, minutes, seconds)
+	}
+}
+
+type Elevation struct{ Value uint16 }
+
+func NewElevation(value uint16) Elevation {
+	return Elevation{Value: value}
+}
+
+func (e Elevation) Format() string {
+	return fmt.Sprintf("%dm", e.Value)
+}
+
+type ElevationStats struct {
+	Descents Elevation
+	Ascents  Elevation
+}
+
 type ActivityData struct {
 	LocalTime      time.Time
-	TotalTime      uint32
+	Time           TimeStats
 	TotalDistances []uint32
+	Speed          SpeedStats
+	Temperatures   Temperatures
+	Elevation      ElevationStats
+	NoSessions     uint32
+	NoRecords      uint32
+	GpsAccuracy    GpsAccuracyStat
+}
+
+func (act ActivityData) TotalDistance() uint32 {
+	value := uint32(0)
+	for _, d := range act.TotalDistances {
+		value += d
+	}
+	return value
+}
+
+type TemperatureStats struct {
+	Avg, Min, Max Temperature
+}
+
+func (act ActivityData) Temperature() TemperatureStats {
+	l := len(act.Temperatures)
+
+	if l == 0 {
+		return TemperatureStats{0, 0, 0}
+	}
+
+	total := 0
+	count := 0
+	min := act.Temperatures[0]
+	max := int8(0)
+
+	for _, t := range act.Temperatures {
+		// for any reason Wahoo ELMNT counts 127 at start
+		if t < 100 {
+			count += 1
+			total += int(t)
+			if t < min {
+				min = t
+			}
+			if max < t {
+				max = t
+			}
+		}
+	}
+
+	avg := total / count
+	return TemperatureStats{Avg: int8(avg), Max: max, Min: min}
 }
 
 type ActivityAD = asyncdata.AsyncData[error, ActivityData]
@@ -23,78 +153,40 @@ type Activity struct {
 }
 
 func (act Activity) FilterValue() string {
-	return act.FormatLocalTime()
+	var value string
+	if data, ok := asyncdata.Success(act.Data); ok {
+		value = FormatLocalTime(data.LocalTime)
+	}
+	return value
 
 }
 
 func (act Activity) Title() string {
-	return act.FormatLocalTime()
+	var title string
+	if data, ok := asyncdata.Success(act.Data); ok {
+		title = FormatLocalTime(data.LocalTime)
+	}
+	return title
 }
 
 func (act Activity) Description() string {
-	return act.FormatTotalDistance()
+	return FormatTotalDistance(act.TotalDistance())
 }
 
-func (act Activity) GetTotalDistance() uint32 {
-	var dist uint32 = 0
-	if data, ok := asyncdata.Success[error, ActivityData](act.Data); ok {
-		for _, d := range data.TotalDistances {
-			dist += d
-		}
+func (act Activity) TotalDistance() uint32 {
+	var value uint32 = 0
+	if data, ok := asyncdata.Success(act.Data); ok {
+		value += data.TotalDistance()
 	}
-	return dist
+	return value
 }
 
-func (act Activity) FormatTotalDistance() string {
-	var meters = act.GetTotalDistance() / 100
-	if meters >= 1000 {
-		km := float64(meters) / 1000
-		formatted := fmt.Sprintf("%.1f", km)
-		formatted = strings.TrimRight(formatted, "0")
-		formatted = strings.TrimRight(formatted, ".")
-		return formatted + "km"
-	} else {
-		return fmt.Sprintf("%dm", meters)
+func (act Activity) GetTotalTime() Time {
+	var value uint32 = 0
+	if data, ok := asyncdata.Success(act.Data); ok {
+		value += data.Time.Total.Value
 	}
-}
-
-func (act Activity) FormatLocalTime() string {
-	if data, ok := asyncdata.Success[error, ActivityData](act.Data); ok {
-		// return data.LocalTime.Format("2006-01-02 15:04")
-		return data.LocalTime.Format("02.01.06 15:04")
-	}
-	return ""
-}
-
-func (data ActivityData) FormatTotalTime() string {
-	var s string
-	seconds := int(data.TotalTime / 1000)
-	if seconds < 60 {
-		// Format as ss
-		s = strconv.Itoa(seconds)
-	} else if seconds < 3600 {
-		// Format as mm:ss
-		minutes := seconds / 60
-		remainingSeconds := seconds % 60
-		s = fmt.Sprintf("%02dm %02ds", minutes, remainingSeconds)
-	} else if seconds < 86400 {
-		// Format as hh:mm:ss
-		hours := seconds / 3600
-		remainingSeconds := seconds % 3600
-		minutes := remainingSeconds / 60
-		seconds = remainingSeconds % 60
-		s = fmt.Sprintf("%02dh %02dm %02ds", hours, minutes, seconds)
-	} else {
-		// Format as dd:hh:mm:ss
-		days := seconds / 86400
-		remainingSeconds := seconds % 86400
-		hours := remainingSeconds / 3600
-		remainingSeconds = remainingSeconds % 3600
-		minutes := remainingSeconds / 60
-		seconds = remainingSeconds % 60
-		s = fmt.Sprintf("%dd %02dh %02dm %02ds", days, hours, minutes, seconds)
-	}
-	return s
+	return NewTime(value)
 }
 
 type Activities = []Activity
