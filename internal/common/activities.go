@@ -52,31 +52,19 @@ type TimeStats struct {
 }
 
 func (time Time) Format() string {
-	formatValue := func(value uint32, padZero bool) string {
-		if padZero || value >= 10 {
-			return fmt.Sprintf("%02d", value)
-		}
-		return fmt.Sprintf("%d", value)
-	}
-
 	seconds := time.Value / 1000
 	if seconds < 60 {
 		return strconv.Itoa(int(seconds))
 	} else if seconds < 3600 {
 		minutes := seconds / 60
 		remainingSeconds := seconds % 60
-		return fmt.Sprintf("%sm %ss",
-			formatValue(minutes, false),
-			formatValue(remainingSeconds, remainingSeconds >= 10))
+		return fmt.Sprintf("%dm %ds", minutes, remainingSeconds)
 	} else if seconds < 86400 {
 		hours := seconds / 3600
 		remainingSeconds := seconds % 3600
 		minutes := remainingSeconds / 60
 		seconds = remainingSeconds % 60
-		return fmt.Sprintf("%sh %sm %ss",
-			formatValue(hours, false),
-			formatValue(minutes, false),
-			formatValue(seconds, seconds >= 10))
+		return fmt.Sprintf("%dh %dm %ds", hours, minutes, seconds)
 	} else {
 		days := seconds / 86400
 		remainingSeconds := seconds % 86400
@@ -84,11 +72,7 @@ func (time Time) Format() string {
 		remainingSeconds = remainingSeconds % 3600
 		minutes := remainingSeconds / 60
 		seconds = remainingSeconds % 60
-		return fmt.Sprintf("%dd %sh %sm %ss",
-			days,
-			formatValue(hours, false),
-			formatValue(minutes, false),
-			formatValue(seconds, seconds >= 10))
+		return fmt.Sprintf("%dd %dh %dm %ds", days, hours, minutes, seconds)
 	}
 }
 
