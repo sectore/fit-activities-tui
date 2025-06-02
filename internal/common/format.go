@@ -66,9 +66,9 @@ func FormatTemperature(t Temperature) string {
 }
 
 func FormatAscent(v Ascent) string {
-	return fmt.Sprintf("+%dm", v)
+	return fmt.Sprintf("%dm", v)
 }
 
 func FormatDescent(v Descent) string {
-	return fmt.Sprintf("-%dm", v)
+	return fmt.Sprintf("%dm", v)
 }

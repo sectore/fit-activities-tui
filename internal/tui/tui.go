@@ -223,17 +223,17 @@ func (m Model) RightContentView() string {
 		{"distance", common.FormatTotalDistance(ActivitiesTotalDistances(visibleItems))},
 	}
 	var sumView string
-	label := "all"
-	if m.list.SettingFilter() {
-		label = "filtering"
-	} else if m.list.IsFiltered() {
-		label = "filtered"
-	}
+	label := ""
+	// if m.list.SettingFilter() {
+	// 	label = "filtering"
+	// } else if m.list.IsFiltered() {
+	// 	label = "filtered"
+	// }
 	sumView += lipgloss.NewStyle().
 		Bold(true).
 		PaddingRight(4).
 		Border(lipgloss.ASCIIBorder(), false, false, true, false).
-		Render(fmt.Sprintf("%s activities", label))
+		Render(fmt.Sprintf("Σ%s activities", label))
 	sumView += br
 	sumTable := table.New().
 		Rows(sumRows...).
@@ -256,7 +256,7 @@ func (m Model) RightContentView() string {
 			PaddingRight(4).
 			Border(lipgloss.ASCIIBorder(), false, false, true, false).
 			MarginBottom(1).
-			Render("selected activity")
+			Render(fmt.Sprintf(`activity #%d`, m.list.Index()+1))
 
 		rows := [][]string{
 			{"date", "..."},
@@ -266,8 +266,8 @@ func (m Model) RightContentView() string {
 			{"elevation", "..."},
 			{"temperature", "..."},
 			{"gps accuracy", "..."},
-			{"# sessions", "..."},
-			{"# records", "..."},
+			{"sessions", "..."},
+			{"records", "..."},
 		}
 		var col = lipgloss.NewStyle().PaddingRight(3).Render
 		// Note: Item is a Pointer here !!!
@@ -284,24 +284,31 @@ func (m Model) RightContentView() string {
 					"2h 31m 1s",
 				)
 				// speed
-				rows[3][1] = fmt.Sprintf(`⌀ %s max %s`,
+				rows[3][1] = fmt.Sprintf(`⌀ %s %s %s`,
 					col(act.Speed.Avg.Format()),
+					arrowTop,
 					act.Speed.Max.Format())
 
 				// Elevation
-				rows[4][1] = fmt.Sprintf(`%s %s`,
+				rows[4][1] = fmt.Sprintf(`%s %s %s %s`,
+					arrowTop,
 					col(common.FormatAscent(act.TotalAscant())),
+					arrowDown,
 					common.FormatDescent(act.TotalDescant()),
 				)
 				// temperature
-				rows[5][1] = fmt.Sprintf(`⌀ %s min %s max %s`,
+				rows[5][1] = fmt.Sprintf(`⌀ %s %s %s %s %s`,
 					col(common.FormatTemperature(act.Temperature().Avg)),
+					arrowDown,
 					col(common.FormatTemperature(act.Temperature().Min)),
+					arrowTop,
 					common.FormatTemperature(act.Temperature().Max))
 				// gps
-				rows[6][1] = fmt.Sprintf(`⌀ %s best %s worse %s`,
+				rows[6][1] = fmt.Sprintf(`⌀ %s %s %s %s %s`,
 					col(act.GpsAccuracy.Avg.Format()),
+					arrowDown,
 					col(act.GpsAccuracy.Min.Format()),
+					arrowTop,
 					act.GpsAccuracy.Max.Format(),
 				)
 				// no. sessions
@@ -341,9 +348,17 @@ func (m Model) RightContentView() string {
 
 func (m Model) LeftContentView() string {
 	var view string
-	title := lipgloss.NewStyle().Bold(true).Render("activities")
-	status := fmt.Sprintf("%d/%d", len(m.list.VisibleItems()), len(m.list.Items()))
-	m.list.Title = fmt.Sprintf("%s %s", title, status)
+	noVisibleActs := len(m.list.VisibleItems())
+	noActs := len(m.list.Items())
+	label := "activities"
+	if noActs <= 1 {
+		label = "activity"
+	}
+	labelNoActs := fmt.Sprintf("%d", noVisibleActs)
+	if m.list.IsFiltered() && noVisibleActs != noActs {
+		labelNoActs = fmt.Sprintf("%d/%d", noVisibleActs, len(m.list.Items()))
+	}
+	m.list.Title = lipgloss.NewStyle().Bold(true).Render(fmt.Sprintf("%s %s", labelNoActs, label))
 	view += m.list.View()
 	return view
 }
