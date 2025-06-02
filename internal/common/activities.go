@@ -126,7 +126,7 @@ type Activity struct {
 
 func (act Activity) FilterValue() string {
 	var value string
-	if data, ok := asyncdata.Success[error, ActivityData](act.Data); ok {
+	if data, ok := asyncdata.Success(act.Data); ok {
 		value = FormatLocalTime(data.LocalTime)
 	}
 	return value
@@ -135,7 +135,7 @@ func (act Activity) FilterValue() string {
 
 func (act Activity) Title() string {
 	var title string
-	if data, ok := asyncdata.Success[error, ActivityData](act.Data); ok {
+	if data, ok := asyncdata.Success(act.Data); ok {
 		title = FormatLocalTime(data.LocalTime)
 	}
 	return title
@@ -147,7 +147,7 @@ func (act Activity) Description() string {
 
 func (act Activity) TotalDistance() uint32 {
 	var value uint32 = 0
-	if data, ok := asyncdata.Success[error, ActivityData](act.Data); ok {
+	if data, ok := asyncdata.Success(act.Data); ok {
 		value += data.TotalDistance()
 	}
 	return value
@@ -155,7 +155,7 @@ func (act Activity) TotalDistance() uint32 {
 
 func (act Activity) GetTotalTime() uint32 {
 	var value uint32 = 0
-	if data, ok := asyncdata.Success[error, ActivityData](act.Data); ok {
+	if data, ok := asyncdata.Success(act.Data); ok {
 		value += data.TotalTime
 	}
 	return value
