@@ -118,6 +118,44 @@ func parseElevation(ss []*mesgdef.Session) common.ElevationStats {
 	return elevation
 }
 
+func parseTemperature(rs []*mesgdef.Record) common.TemperatureStats {
+
+	temperature := common.TemperatureStats{
+		Min: common.NewTemperature(0),
+		Max: common.NewTemperature(0),
+		Avg: common.NewTemperature(0),
+	}
+	var sum, count uint
+	for _, r := range rs {
+		value := r.Temperature
+		// don't count invalid values
+		if value != basetype.Sint8Invalid {
+			value_f := float32(value)
+			// override default zero value
+			if count == 0 {
+				temperature.Min.Value = value_f
+			}
+			// compare min
+			if value_f < temperature.Min.Value {
+				temperature.Min.Value = value_f
+			}
+			// compare max
+			if value_f > temperature.Max.Value {
+				temperature.Max.Value = value_f
+			}
+			count += 1
+			sum += uint(value)
+		}
+	}
+	// skip if no valid values found
+	if count == 0 {
+		return temperature
+	}
+
+	temperature.Avg.Value = float32(sum / count)
+	return temperature
+}
+
 func ParseFile(file string) (*common.ActivityData, error) {
 	f, err := os.Open(file)
 	if err != nil {
@@ -150,16 +188,11 @@ func ParseFile(file string) (*common.ActivityData, error) {
 		totalDistance.Value += s.TotalDistance
 	}
 
-	temperatures := make([]common.Temperature, noRecords)
-	for i, r := range act.Records {
-		temperatures[i] = r.Temperature
-	}
-
 	var activityData = common.ActivityData{
 		LocalTime:     act.Activity.LocalTimestamp,
 		Time:          parseTime(act.Sessions),
 		TotalDistance: totalDistance,
-		Temperatures:  temperatures,
+		Temperature:   parseTemperature(act.Records),
 		Speed:         parseSpeed(act.Records),
 		Elevation:     parseElevation(act.Sessions),
 		NoSessions:    uint32(noSessions),

@@ -291,11 +291,12 @@ func (m Model) RightContentView() string {
 				)
 				// temperature
 				rows[5][1] = fmt.Sprintf(`⌀ %s %s %s %s %s`,
-					col(common.FormatTemperature(act.Temperature().Avg)),
+					col(act.Temperature.Avg.Format()),
 					arrowDown,
-					col(common.FormatTemperature(act.Temperature().Min)),
+					col(act.Temperature.Min.Format()),
 					arrowTop,
-					common.FormatTemperature(act.Temperature().Max))
+					act.Temperature.Max.Format(),
+				)
 				// gps
 				rows[6][1] = fmt.Sprintf(`⌀ %s %s %s %s %s`,
 					col(act.GpsAccuracy.Avg.Format()),

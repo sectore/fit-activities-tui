@@ -9,8 +9,19 @@ import (
 	"github.com/sectore/fit-activities-tui/internal/asyncdata"
 )
 
-type Temperature = int8
-type Temperatures = []Temperature
+type Temperature struct{ Value float32 }
+
+func NewTemperature(value float32) Temperature {
+	return Temperature{Value: value}
+}
+
+func (t Temperature) Format() string {
+	return fmt.Sprintf("%0.f°C", t.Value)
+}
+
+type TemperatureStats struct {
+	Avg, Min, Max Temperature
+}
 
 type GpsAccuracy struct{ Value float32 }
 
@@ -19,7 +30,7 @@ func NewGpsAccuracy(value float32) GpsAccuracy {
 }
 
 func (ga GpsAccuracy) Format() string {
-	return fmt.Sprintf("%.1fm", ga.Value)
+	return fmt.Sprintf("%.0fm", ga.Value)
 }
 
 type GpsAccuracyStat struct {
@@ -116,45 +127,11 @@ type ActivityData struct {
 	Time          TimeStats
 	TotalDistance Distance
 	Speed         SpeedStats
-	Temperatures  Temperatures
+	Temperature   TemperatureStats
 	Elevation     ElevationStats
 	NoSessions    uint32
 	NoRecords     uint32
 	GpsAccuracy   GpsAccuracyStat
-}
-
-type TemperatureStats struct {
-	Avg, Min, Max Temperature
-}
-
-func (act ActivityData) Temperature() TemperatureStats {
-	l := len(act.Temperatures)
-
-	if l == 0 {
-		return TemperatureStats{0, 0, 0}
-	}
-
-	total := 0
-	count := 0
-	min := act.Temperatures[0]
-	max := int8(0)
-
-	for _, t := range act.Temperatures {
-		// for any reason Wahoo ELMNT counts 127 at start
-		if t < 100 {
-			count += 1
-			total += int(t)
-			if t < min {
-				min = t
-			}
-			if max < t {
-				max = t
-			}
-		}
-	}
-
-	avg := total / count
-	return TemperatureStats{Avg: int8(avg), Max: max, Min: min}
 }
 
 type ActivityAD = asyncdata.AsyncData[error, ActivityData]
