@@ -31,6 +31,8 @@ type Model struct {
 const (
 	arrowTop         = "↑"
 	arrowDown        = "↓"
+	BulletPointBig   = "●"
+	BulletPoint      = "∙"
 	openMenuHeight   = 6
 	closedMenuHeight = 1
 )
@@ -74,8 +76,8 @@ func InitialModel(path string) Model {
 
 	// styles for paginator needs to be passed to `Paginator`
 	p := list.Paginator
-	p.ActiveDot = lipgloss.NewStyle().SetString(common.BulletPointBig).String()
-	p.InactiveDot = lipgloss.NewStyle().SetString(common.BulletPoint).String()
+	p.ActiveDot = lipgloss.NewStyle().SetString(BulletPointBig).String()
+	p.InactiveDot = lipgloss.NewStyle().SetString(BulletPoint).String()
 	list.Paginator = p
 
 	ls := list.Styles
