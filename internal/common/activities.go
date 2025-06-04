@@ -33,7 +33,7 @@ func (ga GpsAccuracy) Format() string {
 	return fmt.Sprintf("%.0fm", ga.Value)
 }
 
-type GpsAccuracyStat struct {
+type GpsAccuracyStats struct {
 	Avg, Min, Max GpsAccuracy
 }
 
@@ -131,7 +131,7 @@ type ActivityData struct {
 	Elevation     ElevationStats
 	NoSessions    uint32
 	NoRecords     uint32
-	GpsAccuracy   GpsAccuracyStat
+	GpsAccuracy   GpsAccuracyStats
 }
 
 type ActivityAD = asyncdata.AsyncData[error, ActivityData]

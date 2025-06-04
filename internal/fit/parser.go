@@ -41,9 +41,9 @@ func parseSpeed(rs []*mesgdef.Record) common.SpeedStats {
 
 }
 
-func parseGpsAccurancies(rs []*mesgdef.Record) common.GpsAccuracyStat {
+func parseGpsAccurancies(rs []*mesgdef.Record) common.GpsAccuracyStats {
 	// start w/ empty stats
-	gpsAccurancy := common.GpsAccuracyStat{
+	gpsAccurancy := common.GpsAccuracyStats{
 		Avg: common.NewGpsAccuracy(0),
 		Min: common.NewGpsAccuracy(0),
 		Max: common.NewGpsAccuracy(0),
