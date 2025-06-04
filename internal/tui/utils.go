@@ -37,10 +37,10 @@ func ActivitiesFailures(acts common.Activities) int {
 	return count
 }
 
-func ActivitiesTotalDistances(acts common.Activities) uint32 {
-	var dist uint32
+func ActivitiesTotalDistances(acts common.Activities) common.Distance {
+	dist := common.NewDistance(0)
 	for _, act := range acts {
-		dist += act.TotalDistance()
+		dist.Value += act.TotalDistance().Value
 	}
 	return dist
 }

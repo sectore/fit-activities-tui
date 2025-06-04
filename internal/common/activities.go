@@ -3,6 +3,7 @@ package common
 import (
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/sectore/fit-activities-tui/internal/asyncdata"
@@ -91,24 +92,35 @@ type ElevationStats struct {
 	Ascents  Elevation
 }
 
-type ActivityData struct {
-	LocalTime      time.Time
-	Time           TimeStats
-	TotalDistances []uint32
-	Speed          SpeedStats
-	Temperatures   Temperatures
-	Elevation      ElevationStats
-	NoSessions     uint32
-	NoRecords      uint32
-	GpsAccuracy    GpsAccuracyStat
+type Distance struct{ Value uint32 }
+
+func NewDistance(value uint32) Distance {
+	return Distance{Value: value}
 }
 
-func (act ActivityData) TotalDistance() uint32 {
-	value := uint32(0)
-	for _, d := range act.TotalDistances {
-		value += d
+func (d Distance) Format() string {
+	var meters = d.Value / 100
+	if meters >= 1000 {
+		km := float64(meters) / 1000
+		d := fmt.Sprintf("%.1f", km)
+		d = strings.TrimRight(d, "0")
+		d = strings.TrimRight(d, ".")
+		return d + "km"
+	} else {
+		return fmt.Sprintf("%dm", meters)
 	}
-	return value
+}
+
+type ActivityData struct {
+	LocalTime     time.Time
+	Time          TimeStats
+	TotalDistance Distance
+	Speed         SpeedStats
+	Temperatures  Temperatures
+	Elevation     ElevationStats
+	NoSessions    uint32
+	NoRecords     uint32
+	GpsAccuracy   GpsAccuracyStat
 }
 
 type TemperatureStats struct {
@@ -170,23 +182,22 @@ func (act Activity) Title() string {
 }
 
 func (act Activity) Description() string {
-	return FormatTotalDistance(act.TotalDistance())
+	return act.TotalDistance().Format()
 }
 
-func (act Activity) TotalDistance() uint32 {
-	var value uint32 = 0
+func (act Activity) TotalDistance() Distance {
 	if data, ok := asyncdata.Success(act.Data); ok {
-		value += data.TotalDistance()
+		return data.TotalDistance
 	}
-	return value
+	return NewDistance(0)
 }
 
 func (act Activity) GetTotalTime() Time {
-	var value uint32 = 0
+	value := NewTime(0)
 	if data, ok := asyncdata.Success(act.Data); ok {
-		value += data.Time.Total.Value
+		value.Value += data.Time.Total.Value
 	}
-	return NewTime(value)
+	return value
 }
 
 type Activities = []Activity

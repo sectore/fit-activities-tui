@@ -145,9 +145,9 @@ func ParseFile(file string) (*common.ActivityData, error) {
 	noSessions := len(act.Sessions)
 	noRecords := len(act.Records)
 
-	distances := make([]uint32, noSessions)
-	for i, s := range act.Sessions {
-		distances[i] = s.TotalDistance
+	totalDistance := common.NewDistance(0)
+	for _, s := range act.Sessions {
+		totalDistance.Value += s.TotalDistance
 	}
 
 	temperatures := make([]common.Temperature, noRecords)
@@ -156,15 +156,15 @@ func ParseFile(file string) (*common.ActivityData, error) {
 	}
 
 	var activityData = common.ActivityData{
-		LocalTime:      act.Activity.LocalTimestamp,
-		Time:           parseTime(act.Sessions),
-		TotalDistances: distances,
-		Temperatures:   temperatures,
-		Speed:          parseSpeed(act.Records),
-		Elevation:      parseElevation(act.Sessions),
-		NoSessions:     uint32(noSessions),
-		NoRecords:      uint32(noRecords),
-		GpsAccuracy:    parseGpsAccurancies(act.Records),
+		LocalTime:     act.Activity.LocalTimestamp,
+		Time:          parseTime(act.Sessions),
+		TotalDistance: totalDistance,
+		Temperatures:  temperatures,
+		Speed:         parseSpeed(act.Records),
+		Elevation:     parseElevation(act.Sessions),
+		NoSessions:    uint32(noSessions),
+		NoRecords:     uint32(noRecords),
+		GpsAccuracy:   parseGpsAccurancies(act.Records),
 	}
 
 	return &activityData, nil

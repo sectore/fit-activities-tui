@@ -219,7 +219,7 @@ func (m Model) RightContentView() string {
 	visibleItems := ListItemsToActivities(m.list.VisibleItems())
 	sumRows := [][]string{
 		{"time", ActivitiesTotalTime(visibleItems).Format()},
-		{"distance", common.FormatTotalDistance(ActivitiesTotalDistances(visibleItems))},
+		{"distance", ActivitiesTotalDistances(visibleItems).Format()},
 	}
 	var sumView string
 	sumView += lipgloss.NewStyle().
@@ -265,11 +265,11 @@ func (m Model) RightContentView() string {
 		var col = lipgloss.NewStyle().PaddingRight(3).Render
 		// Note: Item is a Pointer here !!!
 		if act, ok := item.(*common.Activity); ok {
-			if act, ok := asyncdata.Success[error, common.ActivityData](act.Data); ok {
+			if act, ok := asyncdata.Success(act.Data); ok {
 				// date
 				rows[0][1] = common.FormatLocalTime(act.LocalTime)
 				// distance
-				rows[1][1] = common.FormatTotalDistance(act.TotalDistance())
+				rows[1][1] = act.TotalDistance.Format()
 				// time
 				rows[2][1] = fmt.Sprintf(`active %s pause %s Σ %s`,
 					col(act.Time.Active.Format()),
