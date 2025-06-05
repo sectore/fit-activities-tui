@@ -383,7 +383,7 @@ func (m Model) footerView() string {
 			filterCol3 = "[ESC]skip"
 		}
 		rows := [][]string{
-			{"actions", "[/]start", "[r]eload", "[q]uit"},
+			{"actions", "[r]eload", "[q]uit"},
 			{"list", "[" + arrowTop + "]up", "[" + arrowDown + "]down", "[g]first", "[G]last", "[←/→]switch pages"},
 			{"filter", filterCol2, filterCol3},
 		}
