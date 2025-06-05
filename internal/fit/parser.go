@@ -1,7 +1,7 @@
 package fit
 
 import (
-	"errors"
+	"fmt"
 	"os"
 
 	"github.com/muktihari/fit/decoder"
@@ -41,9 +41,9 @@ func parseSpeed(rs []*mesgdef.Record) common.SpeedStats {
 
 }
 
-func parseGpsAccurancies(rs []*mesgdef.Record) common.GpsAccuracyStat {
+func parseGpsAccurancies(rs []*mesgdef.Record) common.GpsAccuracyStats {
 	// start w/ empty stats
-	gpsAccurancy := common.GpsAccuracyStat{
+	gpsAccurancy := common.GpsAccuracyStats{
 		Avg: common.NewGpsAccuracy(0),
 		Min: common.NewGpsAccuracy(0),
 		Max: common.NewGpsAccuracy(0),
@@ -79,11 +79,11 @@ func parseGpsAccurancies(rs []*mesgdef.Record) common.GpsAccuracyStat {
 	return gpsAccurancy
 }
 
-func parseTime(ss []*mesgdef.Session) common.TimeStats {
-	time := common.TimeStats{
-		Total:  common.NewTime(0),
-		Active: common.NewTime(0),
-		Pause:  common.NewTime(0),
+func parseDuration(ss []*mesgdef.Session) common.DurationStats {
+	time := common.DurationStats{
+		Total:  common.NewDuration(0),
+		Active: common.NewDuration(0),
+		Pause:  common.NewDuration(0),
 	}
 	for _, s := range ss {
 		total := s.TotalElapsedTime
@@ -118,6 +118,44 @@ func parseElevation(ss []*mesgdef.Session) common.ElevationStats {
 	return elevation
 }
 
+func parseTemperature(rs []*mesgdef.Record) common.TemperatureStats {
+
+	temperature := common.TemperatureStats{
+		Min: common.NewTemperature(0),
+		Max: common.NewTemperature(0),
+		Avg: common.NewTemperature(0),
+	}
+	var sum, count uint
+	for _, r := range rs {
+		value := r.Temperature
+		// don't count invalid values
+		if value != basetype.Sint8Invalid {
+			value_f := float32(value)
+			// override default zero value
+			if count == 0 {
+				temperature.Min.Value = value_f
+			}
+			// compare min
+			if value_f < temperature.Min.Value {
+				temperature.Min.Value = value_f
+			}
+			// compare max
+			if value_f > temperature.Max.Value {
+				temperature.Max.Value = value_f
+			}
+			count += 1
+			sum += uint(value)
+		}
+	}
+	// skip if no valid values found
+	if count == 0 {
+		return temperature
+	}
+
+	temperature.Avg.Value = float32(sum / count)
+	return temperature
+}
+
 func ParseFile(file string) (*common.ActivityData, error) {
 	f, err := os.Open(file)
 	if err != nil {
@@ -139,32 +177,35 @@ func ParseFile(file string) (*common.ActivityData, error) {
 
 	act, ok := lis.File().(*filedef.Activity)
 	if !ok {
-		return nil, errors.New("expected an Activity")
+		return nil, fmt.Errorf("no Activity found (file %s)", file)
 	}
 
 	noSessions := len(act.Sessions)
+	if noSessions <= 0 {
+		return nil, fmt.Errorf("no Sessions found (file %s)", file)
+	}
 	noRecords := len(act.Records)
-
-	distances := make([]uint32, noSessions)
-	for i, s := range act.Sessions {
-		distances[i] = s.TotalDistance
+	if noSessions <= 0 {
+		return nil, fmt.Errorf("no Records found (file %s)", file)
 	}
 
-	temperatures := make([]common.Temperature, noRecords)
-	for i, r := range act.Records {
-		temperatures[i] = r.Temperature
+	startTime := common.NewTime(act.Sessions[0].StartTime.Local())
+
+	totalDistance := common.NewDistance(0)
+	for _, s := range act.Sessions {
+		totalDistance.Value += s.TotalDistance
 	}
 
 	var activityData = common.ActivityData{
-		LocalTime:      act.Activity.LocalTimestamp,
-		Time:           parseTime(act.Sessions),
-		TotalDistances: distances,
-		Temperatures:   temperatures,
-		Speed:          parseSpeed(act.Records),
-		Elevation:      parseElevation(act.Sessions),
-		NoSessions:     uint32(noSessions),
-		NoRecords:      uint32(noRecords),
-		GpsAccuracy:    parseGpsAccurancies(act.Records),
+		StartTime:     startTime,
+		Duration:      parseDuration(act.Sessions),
+		TotalDistance: totalDistance,
+		Temperature:   parseTemperature(act.Records),
+		Speed:         parseSpeed(act.Records),
+		Elevation:     parseElevation(act.Sessions),
+		NoSessions:    uint32(noSessions),
+		NoRecords:     uint32(noRecords),
+		GpsAccuracy:   parseGpsAccurancies(act.Records),
 	}
 
 	return &activityData, nil

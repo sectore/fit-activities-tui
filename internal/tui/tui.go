@@ -31,6 +31,8 @@ type Model struct {
 const (
 	arrowTop         = "↑"
 	arrowDown        = "↓"
+	BulletPointBig   = "●"
+	BulletPoint      = "∙"
 	openMenuHeight   = 6
 	closedMenuHeight = 1
 )
@@ -74,8 +76,8 @@ func InitialModel(path string) Model {
 
 	// styles for paginator needs to be passed to `Paginator`
 	p := list.Paginator
-	p.ActiveDot = lipgloss.NewStyle().SetString(common.BulletPointBig).String()
-	p.InactiveDot = lipgloss.NewStyle().SetString(common.BulletPoint).String()
+	p.ActiveDot = lipgloss.NewStyle().SetString(BulletPointBig).String()
+	p.InactiveDot = lipgloss.NewStyle().SetString(BulletPoint).String()
 	list.Paginator = p
 
 	ls := list.Styles
@@ -218,8 +220,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m Model) RightContentView() string {
 	visibleItems := ListItemsToActivities(m.list.VisibleItems())
 	sumRows := [][]string{
-		{"time", ActivitiesTotalTime(visibleItems).Format()},
-		{"distance", common.FormatTotalDistance(ActivitiesTotalDistances(visibleItems))},
+		{"time", ActivitiesTotalDuration(visibleItems).Format()},
+		{"distance", ActivitiesTotalDistances(visibleItems).Format()},
 	}
 	var sumView string
 	sumView += lipgloss.NewStyle().
@@ -265,16 +267,16 @@ func (m Model) RightContentView() string {
 		var col = lipgloss.NewStyle().PaddingRight(3).Render
 		// Note: Item is a Pointer here !!!
 		if act, ok := item.(*common.Activity); ok {
-			if act, ok := asyncdata.Success[error, common.ActivityData](act.Data); ok {
+			if act, ok := asyncdata.Success(act.Data); ok {
 				// date
-				rows[0][1] = common.FormatLocalTime(act.LocalTime)
+				rows[0][1] = act.StartTime.Format()
 				// distance
-				rows[1][1] = common.FormatTotalDistance(act.TotalDistance())
+				rows[1][1] = act.TotalDistance.Format()
 				// time
 				rows[2][1] = fmt.Sprintf(`active %s pause %s Σ %s`,
-					col(act.Time.Active.Format()),
-					col(act.Time.Pause.Format()),
-					act.Time.Total.Format(),
+					col(act.Duration.Active.Format()),
+					col(act.Duration.Pause.Format()),
+					act.Duration.Total.Format(),
 				)
 				// speed
 				rows[3][1] = fmt.Sprintf(`⌀ %s %s %s`,
@@ -291,11 +293,12 @@ func (m Model) RightContentView() string {
 				)
 				// temperature
 				rows[5][1] = fmt.Sprintf(`⌀ %s %s %s %s %s`,
-					col(common.FormatTemperature(act.Temperature().Avg)),
+					col(act.Temperature.Avg.Format()),
 					arrowDown,
-					col(common.FormatTemperature(act.Temperature().Min)),
+					col(act.Temperature.Min.Format()),
 					arrowTop,
-					common.FormatTemperature(act.Temperature().Max))
+					act.Temperature.Max.Format(),
+				)
 				// gps
 				rows[6][1] = fmt.Sprintf(`⌀ %s %s %s %s %s`,
 					col(act.GpsAccuracy.Avg.Format()),

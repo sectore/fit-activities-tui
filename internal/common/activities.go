@@ -3,13 +3,36 @@ package common
 import (
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/sectore/fit-activities-tui/internal/asyncdata"
 )
 
-type Temperature = int8
-type Temperatures = []Temperature
+type Time struct{ Value time.Time }
+
+func NewTime(value time.Time) Time {
+	return Time{Value: value}
+}
+
+func (t Time) Format() string {
+	// return data.LocalTime.Format("2006-01-02 15:04")
+	return t.Value.Format("02.01.06 15:04")
+}
+
+type Temperature struct{ Value float32 }
+
+func NewTemperature(value float32) Temperature {
+	return Temperature{Value: value}
+}
+
+func (t Temperature) Format() string {
+	return fmt.Sprintf("%0.f°C", t.Value)
+}
+
+type TemperatureStats struct {
+	Avg, Min, Max Temperature
+}
 
 type GpsAccuracy struct{ Value float32 }
 
@@ -18,10 +41,10 @@ func NewGpsAccuracy(value float32) GpsAccuracy {
 }
 
 func (ga GpsAccuracy) Format() string {
-	return fmt.Sprintf("%.1fm", ga.Value)
+	return fmt.Sprintf("%.0fm", ga.Value)
 }
 
-type GpsAccuracyStat struct {
+type GpsAccuracyStats struct {
 	Avg, Min, Max GpsAccuracy
 }
 
@@ -39,19 +62,19 @@ type SpeedStats struct {
 	Avg, Max Speed
 }
 
-type Time struct{ Value uint32 }
+type Duration struct{ Value uint32 }
 
-func NewTime(value uint32) Time {
-	return Time{Value: value}
+func NewDuration(value uint32) Duration {
+	return Duration{Value: value}
 }
 
-type TimeStats struct {
-	Active Time
-	Total  Time
-	Pause  Time
+type DurationStats struct {
+	Total  Duration
+	Active Duration
+	Pause  Duration
 }
 
-func (time Time) Format() string {
+func (time Duration) Format() string {
 	seconds := time.Value / 1000
 	if seconds < 60 {
 		return strconv.Itoa(int(seconds))
@@ -91,58 +114,35 @@ type ElevationStats struct {
 	Ascents  Elevation
 }
 
+type Distance struct{ Value uint32 }
+
+func NewDistance(value uint32) Distance {
+	return Distance{Value: value}
+}
+
+func (d Distance) Format() string {
+	var meters = d.Value / 100
+	if meters >= 1000 {
+		km := float64(meters) / 1000
+		d := fmt.Sprintf("%.1f", km)
+		d = strings.TrimRight(d, "0")
+		d = strings.TrimRight(d, ".")
+		return d + "km"
+	} else {
+		return fmt.Sprintf("%dm", meters)
+	}
+}
+
 type ActivityData struct {
-	LocalTime      time.Time
-	Time           TimeStats
-	TotalDistances []uint32
-	Speed          SpeedStats
-	Temperatures   Temperatures
-	Elevation      ElevationStats
-	NoSessions     uint32
-	NoRecords      uint32
-	GpsAccuracy    GpsAccuracyStat
-}
-
-func (act ActivityData) TotalDistance() uint32 {
-	value := uint32(0)
-	for _, d := range act.TotalDistances {
-		value += d
-	}
-	return value
-}
-
-type TemperatureStats struct {
-	Avg, Min, Max Temperature
-}
-
-func (act ActivityData) Temperature() TemperatureStats {
-	l := len(act.Temperatures)
-
-	if l == 0 {
-		return TemperatureStats{0, 0, 0}
-	}
-
-	total := 0
-	count := 0
-	min := act.Temperatures[0]
-	max := int8(0)
-
-	for _, t := range act.Temperatures {
-		// for any reason Wahoo ELMNT counts 127 at start
-		if t < 100 {
-			count += 1
-			total += int(t)
-			if t < min {
-				min = t
-			}
-			if max < t {
-				max = t
-			}
-		}
-	}
-
-	avg := total / count
-	return TemperatureStats{Avg: int8(avg), Max: max, Min: min}
+	StartTime     Time
+	Duration      DurationStats
+	TotalDistance Distance
+	Speed         SpeedStats
+	Temperature   TemperatureStats
+	Elevation     ElevationStats
+	NoSessions    uint32
+	NoRecords     uint32
+	GpsAccuracy   GpsAccuracyStats
 }
 
 type ActivityAD = asyncdata.AsyncData[error, ActivityData]
@@ -155,7 +155,7 @@ type Activity struct {
 func (act Activity) FilterValue() string {
 	var value string
 	if data, ok := asyncdata.Success(act.Data); ok {
-		value = FormatLocalTime(data.LocalTime)
+		value = data.StartTime.Format()
 	}
 	return value
 
@@ -164,29 +164,28 @@ func (act Activity) FilterValue() string {
 func (act Activity) Title() string {
 	var title string
 	if data, ok := asyncdata.Success(act.Data); ok {
-		title = FormatLocalTime(data.LocalTime)
+		title = data.StartTime.Format()
 	}
 	return title
 }
 
 func (act Activity) Description() string {
-	return FormatTotalDistance(act.TotalDistance())
+	return act.TotalDistance().Format()
 }
 
-func (act Activity) TotalDistance() uint32 {
-	var value uint32 = 0
+func (act Activity) TotalDistance() Distance {
 	if data, ok := asyncdata.Success(act.Data); ok {
-		value += data.TotalDistance()
+		return data.TotalDistance
 	}
-	return value
+	return NewDistance(0)
 }
 
-func (act Activity) GetTotalTime() Time {
-	var value uint32 = 0
+func (act Activity) GetTotalDuration() Duration {
+	total := NewDuration(0)
 	if data, ok := asyncdata.Success(act.Data); ok {
-		value += data.Time.Total.Value
+		total.Value += data.Duration.Total.Value
 	}
-	return NewTime(value)
+	return total
 }
 
 type Activities = []Activity
