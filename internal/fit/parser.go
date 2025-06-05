@@ -1,7 +1,7 @@
 package fit
 
 import (
-	"errors"
+	"fmt"
 	"os"
 
 	"github.com/muktihari/fit/decoder"
@@ -79,11 +79,11 @@ func parseGpsAccurancies(rs []*mesgdef.Record) common.GpsAccuracyStats {
 	return gpsAccurancy
 }
 
-func parseTime(ss []*mesgdef.Session) common.TimeStats {
-	time := common.TimeStats{
-		Total:  common.NewTime(0),
-		Active: common.NewTime(0),
-		Pause:  common.NewTime(0),
+func parseDuration(ss []*mesgdef.Session) common.DurationStats {
+	time := common.DurationStats{
+		Total:  common.NewDuration(0),
+		Active: common.NewDuration(0),
+		Pause:  common.NewDuration(0),
 	}
 	for _, s := range ss {
 		total := s.TotalElapsedTime
@@ -177,11 +177,19 @@ func ParseFile(file string) (*common.ActivityData, error) {
 
 	act, ok := lis.File().(*filedef.Activity)
 	if !ok {
-		return nil, errors.New("expected an Activity")
+		return nil, fmt.Errorf("no Activity found (file %s)", file)
 	}
 
 	noSessions := len(act.Sessions)
+	if noSessions <= 0 {
+		return nil, fmt.Errorf("no Sessions found (file %s)", file)
+	}
 	noRecords := len(act.Records)
+	if noSessions <= 0 {
+		return nil, fmt.Errorf("no Records found (file %s)", file)
+	}
+
+	startTime := common.NewTime(act.Sessions[0].StartTime.Local())
 
 	totalDistance := common.NewDistance(0)
 	for _, s := range act.Sessions {
@@ -189,8 +197,8 @@ func ParseFile(file string) (*common.ActivityData, error) {
 	}
 
 	var activityData = common.ActivityData{
-		LocalTime:     act.Activity.LocalTimestamp,
-		Time:          parseTime(act.Sessions),
+		StartTime:     startTime,
+		Duration:      parseDuration(act.Sessions),
 		TotalDistance: totalDistance,
 		Temperature:   parseTemperature(act.Records),
 		Speed:         parseSpeed(act.Records),

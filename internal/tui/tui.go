@@ -220,7 +220,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m Model) RightContentView() string {
 	visibleItems := ListItemsToActivities(m.list.VisibleItems())
 	sumRows := [][]string{
-		{"time", ActivitiesTotalTime(visibleItems).Format()},
+		{"time", ActivitiesTotalDuration(visibleItems).Format()},
 		{"distance", ActivitiesTotalDistances(visibleItems).Format()},
 	}
 	var sumView string
@@ -269,14 +269,14 @@ func (m Model) RightContentView() string {
 		if act, ok := item.(*common.Activity); ok {
 			if act, ok := asyncdata.Success(act.Data); ok {
 				// date
-				rows[0][1] = common.FormatLocalTime(act.LocalTime)
+				rows[0][1] = act.StartTime.Format()
 				// distance
 				rows[1][1] = act.TotalDistance.Format()
 				// time
 				rows[2][1] = fmt.Sprintf(`active %s pause %s Σ %s`,
-					col(act.Time.Active.Format()),
-					col(act.Time.Pause.Format()),
-					act.Time.Total.Format(),
+					col(act.Duration.Active.Format()),
+					col(act.Duration.Pause.Format()),
+					act.Duration.Total.Format(),
 				)
 				// speed
 				rows[3][1] = fmt.Sprintf(`⌀ %s %s %s`,

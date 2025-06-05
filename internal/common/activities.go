@@ -9,6 +9,17 @@ import (
 	"github.com/sectore/fit-activities-tui/internal/asyncdata"
 )
 
+type Time struct{ Value time.Time }
+
+func NewTime(value time.Time) Time {
+	return Time{Value: value}
+}
+
+func (t Time) Format() string {
+	// return data.LocalTime.Format("2006-01-02 15:04")
+	return t.Value.Format("02.01.06 15:04")
+}
+
 type Temperature struct{ Value float32 }
 
 func NewTemperature(value float32) Temperature {
@@ -51,19 +62,19 @@ type SpeedStats struct {
 	Avg, Max Speed
 }
 
-type Time struct{ Value uint32 }
+type Duration struct{ Value uint32 }
 
-func NewTime(value uint32) Time {
-	return Time{Value: value}
+func NewDuration(value uint32) Duration {
+	return Duration{Value: value}
 }
 
-type TimeStats struct {
-	Active Time
-	Total  Time
-	Pause  Time
+type DurationStats struct {
+	Total  Duration
+	Active Duration
+	Pause  Duration
 }
 
-func (time Time) Format() string {
+func (time Duration) Format() string {
 	seconds := time.Value / 1000
 	if seconds < 60 {
 		return strconv.Itoa(int(seconds))
@@ -123,8 +134,8 @@ func (d Distance) Format() string {
 }
 
 type ActivityData struct {
-	LocalTime     time.Time
-	Time          TimeStats
+	StartTime     Time
+	Duration      DurationStats
 	TotalDistance Distance
 	Speed         SpeedStats
 	Temperature   TemperatureStats
@@ -144,7 +155,7 @@ type Activity struct {
 func (act Activity) FilterValue() string {
 	var value string
 	if data, ok := asyncdata.Success(act.Data); ok {
-		value = FormatLocalTime(data.LocalTime)
+		value = data.StartTime.Format()
 	}
 	return value
 
@@ -153,7 +164,7 @@ func (act Activity) FilterValue() string {
 func (act Activity) Title() string {
 	var title string
 	if data, ok := asyncdata.Success(act.Data); ok {
-		title = FormatLocalTime(data.LocalTime)
+		title = data.StartTime.Format()
 	}
 	return title
 }
@@ -169,12 +180,12 @@ func (act Activity) TotalDistance() Distance {
 	return NewDistance(0)
 }
 
-func (act Activity) GetTotalTime() Time {
-	value := NewTime(0)
+func (act Activity) GetTotalDuration() Duration {
+	total := NewDuration(0)
 	if data, ok := asyncdata.Success(act.Data); ok {
-		value.Value += data.Time.Total.Value
+		total.Value += data.Duration.Total.Value
 	}
-	return value
+	return total
 }
 
 type Activities = []Activity
