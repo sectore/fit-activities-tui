@@ -2,6 +2,8 @@ package common
 
 import (
 	"fmt"
+	"sort"
+
 	"strconv"
 	"strings"
 	"time"
@@ -180,6 +182,14 @@ func (act Activity) TotalDistance() Distance {
 	return NewDistance(0)
 }
 
+func (act Activity) StartTime() Time {
+	if data, ok := asyncdata.Success(act.Data); ok {
+		return data.StartTime
+	}
+	// January 1, 1970 UTC
+	return NewTime(time.Date(1970, 0, 0, 0, 0, 0, 0, time.Local))
+}
+
 func (act Activity) GetTotalDuration() Duration {
 	total := NewDuration(0)
 	if data, ok := asyncdata.Success(act.Data); ok {
@@ -189,3 +199,54 @@ func (act Activity) GetTotalDuration() Duration {
 }
 
 type Activities = []Activity
+
+type SortBy func(p1, p2 *Activity) bool
+
+func (by SortBy) Sort(acts Activities) {
+	as := &actSorter{
+		acts: acts,
+		by:   by,
+	}
+	sort.Sort(as)
+}
+
+func (by SortBy) Reverse(acts Activities) {
+	as := &actSorter{
+		acts: acts,
+		by:   by,
+	}
+	sort.Sort(sort.Reverse(as))
+}
+
+type actSorter struct {
+	acts Activities
+	by   func(act1, act2 *Activity) bool
+}
+
+func (s *actSorter) Len() int {
+	return len(s.acts)
+}
+
+func (s *actSorter) Swap(i, j int) {
+	s.acts[i], s.acts[j] = s.acts[j], s.acts[i]
+}
+
+func (s *actSorter) Less(i, j int) bool {
+	return s.by(&s.acts[i], &s.acts[j])
+}
+
+var SortByDistance = func(act1, act2 *Activity) bool {
+	return act1.TotalDistance().Value < act2.TotalDistance().Value
+}
+
+var SortByTime = func(act1, act2 *Activity) bool {
+	return act1.StartTime().Value.Before(act2.StartTime().Value)
+}
+
+func SortByTotalDistanceAsc(acts Activities) {
+	SortBy(SortByDistance).Sort(acts)
+}
+
+func SortByTotalDistanceDesc(acts Activities) {
+	SortBy(SortByDistance).Reverse(acts)
+}
