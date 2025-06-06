@@ -15,6 +15,16 @@ import (
 	"github.com/sectore/fit-activities-tui/internal/fit"
 )
 
+type ActsSort int
+
+const (
+	NoSort ActsSort = iota
+	TimeAsc
+	TimeDesc
+	DistanceAsc
+	DistanceDesc
+)
+
 type Model struct {
 	importPath    string
 	importIndex   int
@@ -26,6 +36,7 @@ type Model struct {
 	height        int
 	contentHeight int
 	showMenu      bool
+	actsSort      ActsSort
 }
 
 const (
@@ -106,11 +117,33 @@ func InitialModel(path string) Model {
 		height:        0,
 		contentHeight: 0,
 		showMenu:      false,
+		actsSort:      NoSort,
 	}
 }
 
 func (m Model) Init() tea.Cmd {
 	return tea.Batch(m.spinner.Tick, getFilesCmd(m.importPath))
+}
+
+func (m *Model) sortActs() tea.Cmd {
+	acts := ListItemsToActivities(m.list.Items())
+	switch m.actsSort {
+	case DistanceAsc:
+		common.SortBy(common.SortByDistance).Sort(acts)
+	case DistanceDesc:
+		common.SortBy(common.SortByDistance).Reverse(acts)
+	case TimeAsc:
+		common.SortBy(common.SortByTime).Sort(acts)
+	case TimeDesc:
+		common.SortBy(common.SortByTime).Reverse(acts)
+	default:
+		// do nothing
+	}
+
+	items := ActivitiesToListItems(acts)
+	cmd := m.list.SetItems(items)
+
+	return cmd
 }
 
 func (m *Model) updateContentHeight() {
@@ -144,15 +177,35 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				// reset list
 				m.list.ResetSelected()
 				m.list.ResetFilter()
-				m.list.SetItems([]list.Item{})
+				cmd := m.list.SetItems([]list.Item{})
 
-				cmds = append(cmds, getFilesCmd(m.importPath))
+				cmds = append(cmds, cmd, getFilesCmd(m.importPath))
 
 			}
 		case "m":
 			if !m.list.SettingFilter() {
 				m.showMenu = !m.showMenu
 				m.updateContentHeight()
+			}
+		case "ctrl+d":
+			if !ActivitiesParsing(m.activities) {
+				if m.actsSort != DistanceDesc {
+					m.actsSort = DistanceDesc
+				} else {
+					m.actsSort = DistanceAsc
+				}
+				cmd := m.sortActs()
+				cmds = append(cmds, cmd)
+			}
+		case "ctrl+t":
+			if !ActivitiesParsing(m.activities) {
+				if m.actsSort != TimeDesc {
+					m.actsSort = TimeDesc
+				} else {
+					m.actsSort = TimeAsc
+				}
+				cmd := m.sortActs()
+				cmds = append(cmds, cmd)
 			}
 		case "q":
 			if !m.list.SettingFilter() {
@@ -170,25 +223,22 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 		m.activities = activities
-		// transform activities to be `list.Item`
-		items := make([]list.Item, len(msg))
-		for i, act := range activities {
-			items[i] = act
-		}
-		m.list.SetItems(items)
+		items := ActivitiesToListItems(activities)
+		cmd := m.list.SetItems(items)
 		// parse first Activity
 		firstAct := m.activities[0]
 		firstAct.Data = asyncdata.NewLoading[error, common.ActivityData](nil)
-		cmds = append(cmds, parseFileCmd(&firstAct))
+		cmds = append(cmds, cmd, parseFileCmd(firstAct))
 
 	case parseFileResultMsg:
 		i := m.importIndex
-		m.activities[i] = *msg.Activity
-		m.list.SetItem(i, msg.Activity)
+		m.activities[i] = msg.Activity
+		cmd := m.list.SetItem(i, msg.Activity)
+		cmds = append(cmds, cmd)
 
 		if i < len(m.activities)-1 {
 			m.importIndex++
-			act := &m.activities[m.importIndex]
+			act := m.activities[m.importIndex]
 			act.Data = asyncdata.NewLoading[error, common.ActivityData](nil)
 			cmds = append(cmds, parseFileCmd(act))
 
@@ -265,8 +315,7 @@ func (m Model) RightContentView() string {
 			{"records", "..."},
 		}
 		var col = lipgloss.NewStyle().PaddingRight(3).Render
-		// Note: Item is a Pointer here !!!
-		if act, ok := item.(*common.Activity); ok {
+		if act, ok := item.(common.Activity); ok {
 			if act, ok := asyncdata.Success(act.Data); ok {
 				// date
 				rows[0][1] = act.StartTime.Format()
@@ -367,25 +416,31 @@ func (m Model) footerView() string {
 	line := strings.Repeat("─", max(0, m.width-len(menu)-1))
 	view := fmt.Sprintf("%s %s", menu, line)
 	if m.showMenu {
-		filterCol2 := "[/]start"
+		filterCol2 := "[/]start filter"
 		if m.list.SettingFilter() {
 			if len(m.list.FilterValue()) > 0 {
-				filterCol2 = "[ENTER]apply"
+				filterCol2 = "[ENTER]apply filter"
 			} else {
-				filterCol2 = "[ESC]cancel"
+				filterCol2 = "[ESC]cancel filter"
 			}
 		}
-		filterCol3 := ""
+		filterCol3 := "[^d]sort by duration"
+		filterCol4 := "[^t]sort by start time"
 		if m.list.IsFiltered() {
-			filterCol3 = "[ESC]clear"
+			filterCol3 = "[ESC]clear filter"
+			filterCol4 = ""
 		}
-		if m.list.SettingFilter() && len(m.list.FilterValue()) > 0 {
-			filterCol3 = "[ESC]skip"
+		if m.list.SettingFilter() {
+			filterCol3 = ""
+			filterCol4 = ""
+			if len(m.list.FilterValue()) > 0 {
+				filterCol3 = "[ESC]skip filter"
+			}
 		}
 		rows := [][]string{
-			{"actions", "[/]start", "[r]eload", "[q]uit"},
+			{"actions", "[r]eload", "[q]uit"},
 			{"list", "[" + arrowTop + "]up", "[" + arrowDown + "]down", "[g]first", "[G]last", "[←/→]switch pages"},
-			{"filter", filterCol2, filterCol3},
+			{"filter/sort", filterCol2, filterCol3, filterCol4},
 		}
 		table := table.New().
 			Rows(rows...).
@@ -424,7 +479,7 @@ func (m Model) View() string {
 
 type (
 	getFilesResultMsg  []string
-	parseFileResultMsg struct{ *common.Activity }
+	parseFileResultMsg struct{ common.Activity }
 	errMsg             struct{ err error }
 )
 
@@ -441,7 +496,7 @@ func getFilesCmd(path string) tea.Cmd {
 	}
 }
 
-func parseFileCmd(act *common.Activity) tea.Cmd {
+func parseFileCmd(act common.Activity) tea.Cmd {
 	return func() tea.Msg {
 		// channel to send result msg
 		resultCh := make(chan tea.Msg, 1)
