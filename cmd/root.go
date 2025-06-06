@@ -2,6 +2,8 @@ package cmd
 
 import (
 	"fmt"
+	"io"
+	"log"
 	"os"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -20,6 +22,19 @@ var rootCmd = &cobra.Command{
 				return fmt.Errorf("failed to get current working directory: %v", err)
 			}
 			path = d
+		}
+
+		doLogging, _ := cmd.Flags().GetBool("log")
+		if doLogging {
+			f, err := tea.LogToFile("debug.log", "debug")
+			if err != nil {
+				fmt.Println("failed to initial logging:", err)
+				os.Exit(1)
+			}
+			log.Printf("logging enabled")
+			defer f.Close()
+		} else {
+			log.SetOutput(io.Discard)
 		}
 
 		program := tea.NewProgram(
@@ -43,5 +58,6 @@ func Execute() {
 	}
 }
 func init() {
-	rootCmd.PersistentFlags().StringP("import", "i", "", "Import directory")
+	rootCmd.PersistentFlags().StringP("import", "i", "", "path to single FIT file or directory of FIT files to import")
+	rootCmd.PersistentFlags().Bool("log", false, "enable logging to store logs into 'debug.log'")
 }

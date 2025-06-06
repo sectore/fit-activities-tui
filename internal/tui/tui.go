@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"log"
 	"path/filepath"
 	"strings"
 
@@ -165,6 +166,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.updateContentHeight()
 
 	case tea.KeyMsg:
+		log.Printf("key %s", msg.String())
 		switch msg.String() {
 		// reload data
 		case "r":
