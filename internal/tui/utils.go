@@ -63,7 +63,6 @@ func ListItemsToActivities(items []list.Item) common.Activities {
 	return acts
 }
 
-// transform activities to be a `list.Item`
 func ActivitiesToListItems(acts common.Activities) []list.Item {
 	items := make([]list.Item, len(acts))
 	for i, act := range acts {

@@ -18,7 +18,6 @@ func NewTime(value time.Time) Time {
 }
 
 func (t Time) Format() string {
-	// return data.LocalTime.Format("2006-01-02 15:04")
 	return t.Value.Format("02.01.06 15:04")
 }
 
@@ -186,7 +185,7 @@ func (act Activity) StartTime() Time {
 	if data, ok := asyncdata.Success(act.Data); ok {
 		return data.StartTime
 	}
-	// January 1, 1970 UTC
+	// default: January 1, 1970 UTC
 	return NewTime(time.Date(1970, 0, 0, 0, 0, 0, 0, time.Local))
 }
 
@@ -200,7 +199,7 @@ func (act Activity) GetTotalDuration() Duration {
 
 type Activities = []Activity
 
-type SortBy func(p1, p2 *Activity) bool
+type SortBy func(act1, act2 *Activity) bool
 
 func (by SortBy) Sort(acts Activities) {
 	as := &actSorter{
@@ -241,12 +240,4 @@ var SortByDistance = func(act1, act2 *Activity) bool {
 
 var SortByTime = func(act1, act2 *Activity) bool {
 	return act1.StartTime().Value.Before(act2.StartTime().Value)
-}
-
-func SortByTotalDistanceAsc(acts Activities) {
-	SortBy(SortByDistance).Sort(acts)
-}
-
-func SortByTotalDistanceDesc(acts Activities) {
-	SortBy(SortByDistance).Reverse(acts)
 }
