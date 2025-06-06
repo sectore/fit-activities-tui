@@ -416,25 +416,31 @@ func (m Model) footerView() string {
 	line := strings.Repeat("─", max(0, m.width-len(menu)-1))
 	view := fmt.Sprintf("%s %s", menu, line)
 	if m.showMenu {
-		filterCol2 := "[/]start"
+		filterCol2 := "[/]start filter"
 		if m.list.SettingFilter() {
 			if len(m.list.FilterValue()) > 0 {
-				filterCol2 = "[ENTER]apply"
+				filterCol2 = "[ENTER]apply filter"
 			} else {
-				filterCol2 = "[ESC]cancel"
+				filterCol2 = "[ESC]cancel filter"
 			}
 		}
-		filterCol3 := ""
+		filterCol3 := "[^d]sort by duration"
+		filterCol4 := "[^t]sort by start time"
 		if m.list.IsFiltered() {
-			filterCol3 = "[ESC]clear"
+			filterCol3 = "[ESC]clear filter"
+			filterCol4 = ""
 		}
-		if m.list.SettingFilter() && len(m.list.FilterValue()) > 0 {
-			filterCol3 = "[ESC]skip"
+		if m.list.SettingFilter() {
+			filterCol3 = ""
+			filterCol4 = ""
+			if len(m.list.FilterValue()) > 0 {
+				filterCol3 = "[ESC]skip filter"
+			}
 		}
 		rows := [][]string{
 			{"actions", "[r]eload", "[q]uit"},
 			{"list", "[" + arrowTop + "]up", "[" + arrowDown + "]down", "[g]first", "[G]last", "[←/→]switch pages"},
-			{"filter", filterCol2, filterCol3},
+			{"filter/sort", filterCol2, filterCol3, filterCol4},
 		}
 		table := table.New().
 			Rows(rows...).
