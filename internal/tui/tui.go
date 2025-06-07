@@ -402,7 +402,7 @@ func (m Model) footerView() string {
 				filterCol2 = "[ESC]cancel filter"
 			}
 		}
-		filterCol3 := "[^d]sort by duration"
+		filterCol3 := "[^d]sort by distance"
 		filterCol4 := "[^t]sort by start time"
 		if m.list.IsFiltered() {
 			filterCol3 = "[ESC]clear filter"
