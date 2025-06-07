@@ -1,8 +1,12 @@
 # fit-activities-tui
 
-Activities of [`FIT` (Flexible and Interoperable Data Transfer)](https://developer.garmin.com/fit/overview/) files in your terminal.
+**Activities** of **[FIT](https://developer.garmin.com/fit/overview/)** ([Flexible and Interoperable Data Transfer](https://developer.garmin.com/fit/overview/)) files in your **terminal**.
 
-Works nice with Wahoo devices. Tested with ELEMNT BOLT 3.
+Handles as much FIT files as you want: Summary, details, filter and sort. It's fast. Free and open source.
+
+Works nice with [Wahoo Fitness](http://wahoofitness.com) devices. Tested with [ELEMNT BOLT 3](https://support.wahoofitness.com/hc/en-us/articles/26243351942290-ELEMNT-BOLT-3-2025-Product-Information).
+
+Built with [Go](https://go.dev), [Bubble Tea](https://github.com/charmbracelet/bubbletea/) and ♥.
 
 # Table of Contents
 
@@ -44,11 +48,11 @@ Flags:
 
 | Key | Description |
 | --- | --- |
-| <kbd>↑</kbd> | prev. activity |
+| <kbd>↑</kbd> | previous activity |
 | <kbd>↓</kbd> | next activity |
 | <kbd>g</kbd> | first activity |
 | <kbd>G</kbd> | last activity |
-| <kbd>← or →</kbd> | switch pages |
+| <kbd>←</kbd> or <kbd>→</kbd> | switch pages |
 
 ## Filter
 
@@ -70,7 +74,7 @@ Flags:
 
 | Key | Description |
 | --- | --- |
-| <kbd>r</kbd> | reload data |
+| <kbd>r</kbd> | re-import file(s) |
 | <kbd>q</kbd> | quit |
 
 # Installation
