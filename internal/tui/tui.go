@@ -27,45 +27,34 @@ const (
 )
 
 type Model struct {
-	importPath    string
-	importIndex   int
-	activities    common.Activities
-	errMsgs       []error
-	spinner       spinner.Model
-	list          list.Model
-	width         int
-	height        int
-	contentHeight int
-	showMenu      bool
-	actsSort      ActsSort
+	importPath  string
+	importIndex int
+	activities  common.Activities
+	errMsgs     []error
+	spinner     spinner.Model
+	list        list.Model
+	width       int
+	height      int
+	showMenu    bool
+	actsSort    ActsSort
 }
 
 const (
-	arrowTop         = "↑"
-	arrowDown        = "↓"
-	BulletPointBig   = "●"
-	BulletPoint      = "∙"
-	openMenuHeight   = 6
-	closedMenuHeight = 1
+	arrowTop       = "↑"
+	arrowDown      = "↓"
+	BulletPointBig = "●"
+	BulletPoint    = "∙"
 )
 
 var (
-	contentStyle = lipgloss.NewStyle().Padding(1)
-	// Note: Set width of list here,
-	// because `list.SetWidth()` seems does not to work
+	contentStyle      = lipgloss.NewStyle().Padding(1)
 	leftContentStyle  = lipgloss.NewStyle().Width(30)
 	rightContentStyle = lipgloss.NewStyle().Padding(0, 2, 2, 0)
 	footerStyle       = lipgloss.NewStyle().Padding(0, 1)
-	// headline style
-	hStyle = lipgloss.NewStyle().
-		PaddingLeft(1).
-		PaddingRight(3).
-		MarginLeft(2).
-		Border(lipgloss.NormalBorder(), true, false)
-	errorStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#F25D94"))
-	noColor    = lipgloss.NoColor{}
-	emptyStyle = lipgloss.NewStyle()
-	br         = lipgloss.NewStyle().SetString("\n").String()
+	errorStyle        = lipgloss.NewStyle().Foreground(lipgloss.Color("#F25D94"))
+	noColor           = lipgloss.NoColor{}
+	emptyStyle        = lipgloss.NewStyle()
+	br                = lipgloss.NewStyle().SetString("\n").String()
 )
 
 func InitialModel(path string) Model {
@@ -109,16 +98,15 @@ func InitialModel(path string) Model {
 	list.SetShowStatusBar(false)
 
 	return Model{
-		importPath:    path,
-		importIndex:   0,
-		activities:    common.Activities{},
-		spinner:       s,
-		list:          list,
-		width:         0,
-		height:        0,
-		contentHeight: 0,
-		showMenu:      false,
-		actsSort:      NoSort,
+		importPath:  path,
+		importIndex: 0,
+		activities:  common.Activities{},
+		spinner:     s,
+		list:        list,
+		width:       0,
+		height:      0,
+		showMenu:    false,
+		actsSort:    NoSort,
 	}
 }
 
@@ -147,23 +135,12 @@ func (m *Model) sortActs() tea.Cmd {
 	return cmd
 }
 
-func (m *Model) updateContentHeight() {
-	footerH := closedMenuHeight
-	if m.showMenu {
-		footerH = openMenuHeight
-	}
-	listH := m.height - footerH - 2 // content paddingTopBottom
-	m.list.SetHeight(listH)
-	m.contentHeight = listH
-}
-
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 	switch msg := msg.(type) {
 
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
-		m.updateContentHeight()
 
 	case tea.KeyMsg:
 		log.Printf("key %s", msg.String())
@@ -187,7 +164,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "m":
 			if !m.list.SettingFilter() {
 				m.showMenu = !m.showMenu
-				m.updateContentHeight()
 			}
 		case "ctrl+d":
 			if !ActivitiesParsing(m.activities) {
@@ -468,13 +444,19 @@ func (m Model) footerView() string {
 
 func (m Model) View() string {
 
+	footer := m.footerView()
+	footerH := lipgloss.Height(footer)
+	contentHeight := m.height - footerH - 2 // add padding of content
+	m.list.SetHeight(contentHeight)
 	content := lipgloss.JoinHorizontal(lipgloss.Top,
 		leftContentStyle.Render(m.LeftContentView()),
-		rightContentStyle.Render(m.RightContentView()),
+		rightContentStyle.
+			MaxHeight(contentHeight).
+			Render(m.RightContentView()),
 	)
 	view := lipgloss.JoinVertical(lipgloss.Position(lipgloss.Left),
 		contentStyle.Render(content),
-		footerStyle.Render(m.footerView()))
+		footerStyle.Render(footer))
 
 	return view
 }
