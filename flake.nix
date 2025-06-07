@@ -47,6 +47,9 @@
             gopls
             gotools
             go-tools
+
+            just
+            vhs
           ];
         };
       }

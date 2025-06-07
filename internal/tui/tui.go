@@ -402,7 +402,7 @@ func (m Model) footerView() string {
 				filterCol2 = "[ESC]cancel filter"
 			}
 		}
-		filterCol3 := "[^d]sort by duration"
+		filterCol3 := "[^d]sort by distance"
 		filterCol4 := "[^t]sort by start time"
 		if m.list.IsFiltered() {
 			filterCol3 = "[ESC]clear filter"
@@ -431,12 +431,7 @@ func (m Model) footerView() string {
 					return lipgloss.NewStyle().PaddingRight(2)
 				}
 			})
-		view += fmt.Sprintf("%s%s", table, br)
-		view += lipgloss.
-			JoinHorizontal(lipgloss.Top,
-				emptyStyle.PaddingRight(8).Bold(true).Render("path"),
-				m.importPath,
-			)
+		view += fmt.Sprintf("%s", table)
 	}
 
 	return view
