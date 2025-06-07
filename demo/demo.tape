@@ -18,9 +18,9 @@ Show
 
 # --- sort ---
 Sleep 500ms
-Ctrl+d
-Sleep 500ms
 Ctrl+t
+Sleep 500ms
+Ctrl+d
 Sleep 500ms
 
 # --- jump items ---
