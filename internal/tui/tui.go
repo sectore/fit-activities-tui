@@ -431,12 +431,7 @@ func (m Model) footerView() string {
 					return lipgloss.NewStyle().PaddingRight(2)
 				}
 			})
-		view += fmt.Sprintf("%s%s", table, br)
-		view += lipgloss.
-			JoinHorizontal(lipgloss.Top,
-				emptyStyle.PaddingRight(8).Bold(true).Render("path"),
-				m.importPath,
-			)
+		view += fmt.Sprintf("%s", table)
 	}
 
 	return view
