@@ -21,6 +21,14 @@ func (t Time) Format() string {
 	return t.Value.Format("02.01.06 15:04")
 }
 
+func (t Time) FormatDate() string {
+	return t.Value.Format("02.01.06")
+}
+
+func (t Time) FormatHhMm() string {
+	return t.Value.Format("15:04")
+}
+
 type Temperature struct{ Value float32 }
 
 func NewTemperature(value float32) Temperature {
@@ -136,6 +144,7 @@ func (d Distance) Format() string {
 
 type ActivityData struct {
 	StartTime     Time
+	FinishTime    Time
 	Duration      DurationStats
 	TotalDistance Distance
 	Speed         SpeedStats
@@ -184,6 +193,14 @@ func (act Activity) TotalDistance() Distance {
 func (act Activity) StartTime() Time {
 	if data, ok := asyncdata.Success(act.Data); ok {
 		return data.StartTime
+	}
+	// default: January 1, 1970 UTC
+	return NewTime(time.Date(1970, 0, 0, 0, 0, 0, 0, time.Local))
+}
+
+func (act Activity) FinishTime() Time {
+	if data, ok := asyncdata.Success(act.Data); ok {
+		return data.FinishTime
 	}
 	// default: January 1, 1970 UTC
 	return NewTime(time.Date(1970, 0, 0, 0, 0, 0, 0, time.Local))
