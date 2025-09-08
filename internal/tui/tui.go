@@ -19,8 +19,7 @@ import (
 type ActsSort int
 
 const (
-	NoSort ActsSort = iota
-	TimeAsc
+	TimeAsc ActsSort = iota
 	TimeDesc
 	DistanceAsc
 	DistanceDesc
@@ -106,7 +105,7 @@ func InitialModel(path string) Model {
 		width:       0,
 		height:      0,
 		showMenu:    false,
-		actsSort:    NoSort,
+		actsSort:    TimeDesc,
 	}
 }
 
@@ -115,24 +114,11 @@ func (m Model) Init() tea.Cmd {
 }
 
 func (m *Model) sortActs() tea.Cmd {
-	acts := ListItemsToActivities(m.list.Items())
 
-	switch m.actsSort {
-	case DistanceAsc:
-		common.SortBy(common.SortByDistance).Sort(acts)
-	case DistanceDesc:
-		common.SortBy(common.SortByDistance).Reverse(acts)
-	case TimeAsc:
-		common.SortBy(common.SortByTime).Sort(acts)
-	case TimeDesc:
-		common.SortBy(common.SortByTime).Reverse(acts)
-	case NoSort:
-		// do nothing
-	}
+	items := SortItems(m.list.Items(), m.actsSort)
 
-	items := ActivitiesToListItems(acts)
 	// Note: `SetItems` resets the filter internally.
-	// That's remember filter text BEFORE ...
+	// Fix: Remember filter text BEFORE ...
 	filterText := m.list.FilterInput.Value()
 	// ... updating ALL items ...
 	cmd := m.list.SetItems(items)
@@ -210,17 +196,20 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 		m.activities = activities
-		items := ActivitiesToListItems(activities)
-		cmd := m.list.SetItems(items)
 		// parse first Activity
 		firstAct := m.activities[0]
 		firstAct.Data = asyncdata.NewLoading[error, common.ActivityData](nil)
-		cmds = append(cmds, cmd, parseFileCmd(firstAct))
+		cmds = append(cmds, parseFileCmd(firstAct))
 
 	case parseFileResultMsg:
 		i := m.importIndex
 		m.activities[i] = msg.Activity
-		cmd := m.list.SetItem(i, msg.Activity)
+		// add new item to current items
+		items := append(m.list.Items(), msg.Activity)
+		// sort list
+		items = SortItems(items, m.actsSort)
+		// set sorted items to list
+		cmd := m.list.SetItems(items)
 		cmds = append(cmds, cmd)
 
 		if i < len(m.activities)-1 {
@@ -396,33 +385,42 @@ func (m Model) LeftContentView() string {
 	noVisibleActs := len(m.list.VisibleItems())
 	noActs := len(m.list.Items())
 
+	// title -> filtered
 	if m.list.IsFiltered() && noVisibleActs != noActs {
 		labelNoActs := fmt.Sprintf("%d of %d", noVisibleActs, len(m.list.Items()))
 		m.list.Title = lipgloss.NewStyle().Bold(false).Italic(true).Render(labelNoActs)
-	} else {
-		m.list.Title = lipgloss.NewStyle().Bold(true).Render("All")
+	} else
+	// title -> all
+	{
+		title := lipgloss.NewStyle().Bold(true).Render("All ")
+		if ActivitiesParsing(m.activities) {
+			title += lipgloss.NewStyle().Bold(false).Italic(true).Render("importing")
+		}
+		m.list.Title = title
 	}
 
 	view := m.list.View()
 
-	view += br
-
-	sortLabel := "sorted: "
+	sortLabel := "sorted by "
 	switch m.actsSort {
 	case DistanceAsc:
-		sortLabel += "dist." + arrowTop
+		sortLabel += "dist. " + arrowTop
 	case DistanceDesc:
-		sortLabel += "dist." + arrowDown
+		sortLabel += "dist. " + arrowDown
 	case TimeAsc:
 		sortLabel += "time " + arrowTop
 	case TimeDesc:
 		sortLabel += "time " + arrowDown
-	case NoSort:
-		sortLabel = "no sort"
 	}
+
+	// empty label for a single item
+	if len(m.list.VisibleItems()) <= 1 {
+		sortLabel = " "
+	}
+
 	view += lipgloss.NewStyle().PaddingLeft(2).
-		PaddingTop(1).
-		PaddingBottom(1).
+		MarginTop(2).
+		MarginBottom(1).
 		Italic(true).
 		Render(sortLabel)
 
