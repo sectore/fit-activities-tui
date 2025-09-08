@@ -126,7 +126,7 @@ func (m *Model) sortActs() tea.Cmd {
 		common.SortBy(common.SortByTime).Sort(acts)
 	case TimeDesc:
 		common.SortBy(common.SortByTime).Reverse(acts)
-	default:
+	case NoSort:
 		// do nothing
 	}
 
@@ -403,7 +403,30 @@ func (m Model) LeftContentView() string {
 		m.list.Title = lipgloss.NewStyle().Bold(true).Render("All")
 	}
 
-	return m.list.View()
+	view := m.list.View()
+
+	view += br
+
+	sortLabel := "sorted: "
+	switch m.actsSort {
+	case DistanceAsc:
+		sortLabel += "dist." + arrowTop
+	case DistanceDesc:
+		sortLabel += "dist." + arrowDown
+	case TimeAsc:
+		sortLabel += "time " + arrowTop
+	case TimeDesc:
+		sortLabel += "time " + arrowDown
+	case NoSort:
+		sortLabel = "no sort"
+	}
+	view += lipgloss.NewStyle().PaddingLeft(2).
+		PaddingTop(1).
+		PaddingBottom(1).
+		Italic(true).
+		Render(sortLabel)
+
+	return view
 }
 
 func (m Model) footerView() string {
@@ -463,7 +486,7 @@ func (m Model) View() string {
 	footer := m.footerView()
 	footerH := lipgloss.Height(footer)
 	contentHeight := m.height - footerH - 2 // add padding of content
-	m.list.SetHeight(contentHeight)
+	m.list.SetHeight(contentHeight - 3)     // offset for custom footer below list
 	content := lipgloss.JoinHorizontal(lipgloss.Top,
 		leftContentStyle.Render(m.LeftContentView()),
 		rightContentStyle.
