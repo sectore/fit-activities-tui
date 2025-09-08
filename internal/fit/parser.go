@@ -185,13 +185,13 @@ func ParseFile(file string) (*common.ActivityData, error) {
 		return nil, fmt.Errorf("no Sessions found (file %s)", file)
 	}
 	noRecords := len(act.Records)
+	lastRecordIndex := max(noRecords-1, 0)
 	if noSessions <= 0 {
 		return nil, fmt.Errorf("no Records found (file %s)", file)
 	}
 
 	startTime := common.NewTime(act.Records[0].Timestamp.Local())
-	finishTimeIndex := max(noRecords-1, 0)
-	finishTime := common.NewTime(act.Records[finishTimeIndex].Timestamp.Local())
+	finishTime := common.NewTime(act.Records[lastRecordIndex].Timestamp.Local())
 
 	totalDistance := common.NewDistance(0)
 	for _, s := range act.Sessions {
