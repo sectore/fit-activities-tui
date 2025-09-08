@@ -116,6 +116,7 @@ func (m Model) Init() tea.Cmd {
 
 func (m *Model) sortActs() tea.Cmd {
 	acts := ListItemsToActivities(m.list.Items())
+
 	switch m.actsSort {
 	case DistanceAsc:
 		common.SortBy(common.SortByDistance).Sort(acts)
@@ -130,7 +131,15 @@ func (m *Model) sortActs() tea.Cmd {
 	}
 
 	items := ActivitiesToListItems(acts)
+	// Note: `SetItems` resets the filter internally.
+	// That's remember filter text BEFORE ...
+	filterText := m.list.FilterInput.Value()
+	// ... updating ALL items ...
 	cmd := m.list.SetItems(items)
+	// ... and set filter text again to set filter internally.
+	if filterText != "" {
+		m.list.SetFilterText(filterText)
+	}
 
 	return cmd
 }
