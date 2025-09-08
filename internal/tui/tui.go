@@ -19,8 +19,7 @@ import (
 type ActsSort int
 
 const (
-	NoSort ActsSort = iota
-	TimeAsc
+	TimeAsc ActsSort = iota
 	TimeDesc
 	DistanceAsc
 	DistanceDesc
@@ -106,7 +105,7 @@ func InitialModel(path string) Model {
 		width:       0,
 		height:      0,
 		showMenu:    false,
-		actsSort:    NoSort,
+		actsSort:    TimeDesc,
 	}
 }
 
@@ -115,22 +114,18 @@ func (m Model) Init() tea.Cmd {
 }
 
 func (m *Model) sortActs() tea.Cmd {
-	acts := ListItemsToActivities(m.list.Items())
-	switch m.actsSort {
-	case DistanceAsc:
-		common.SortBy(common.SortByDistance).Sort(acts)
-	case DistanceDesc:
-		common.SortBy(common.SortByDistance).Reverse(acts)
-	case TimeAsc:
-		common.SortBy(common.SortByTime).Sort(acts)
-	case TimeDesc:
-		common.SortBy(common.SortByTime).Reverse(acts)
-	default:
-		// do nothing
-	}
 
-	items := ActivitiesToListItems(acts)
+	items := SortItems(m.list.Items(), m.actsSort)
+
+	// Note: `SetItems` resets the filter internally.
+	// That's why we need to remember filter text BEFORE ...
+	filterText := m.list.FilterInput.Value()
+	// ... updating ALL items ...
 	cmd := m.list.SetItems(items)
+	// ... to set filter text again, which sets filter internally.
+	if filterText != "" {
+		m.list.SetFilterText(filterText)
+	}
 
 	return cmd
 }
@@ -201,17 +196,20 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 		m.activities = activities
-		items := ActivitiesToListItems(activities)
-		cmd := m.list.SetItems(items)
 		// parse first Activity
 		firstAct := m.activities[0]
 		firstAct.Data = asyncdata.NewLoading[error, common.ActivityData](nil)
-		cmds = append(cmds, cmd, parseFileCmd(firstAct))
+		cmds = append(cmds, parseFileCmd(firstAct))
 
 	case parseFileResultMsg:
 		i := m.importIndex
 		m.activities[i] = msg.Activity
-		cmd := m.list.SetItem(i, msg.Activity)
+		// add new item to current items
+		items := append(m.list.Items(), msg.Activity)
+		// sort list
+		items = SortItems(items, m.actsSort)
+		// set sorted items to list
+		cmd := m.list.SetItems(items)
 		cmds = append(cmds, cmd)
 
 		if i < len(m.activities)-1 {
@@ -387,14 +385,46 @@ func (m Model) LeftContentView() string {
 	noVisibleActs := len(m.list.VisibleItems())
 	noActs := len(m.list.Items())
 
+	// title -> filtered
 	if m.list.IsFiltered() && noVisibleActs != noActs {
 		labelNoActs := fmt.Sprintf("%d of %d", noVisibleActs, len(m.list.Items()))
 		m.list.Title = lipgloss.NewStyle().Bold(false).Italic(true).Render(labelNoActs)
-	} else {
-		m.list.Title = lipgloss.NewStyle().Bold(true).Render("All")
+	} else
+	// title -> all
+	{
+		title := lipgloss.NewStyle().Bold(true).Render("All ")
+		if ActivitiesParsing(m.activities) {
+			title += lipgloss.NewStyle().Bold(false).Italic(true).Render("importing")
+		}
+		m.list.Title = title
 	}
 
-	return m.list.View()
+	view := m.list.View()
+
+	sortLabel := "sorted by "
+	switch m.actsSort {
+	case DistanceAsc:
+		sortLabel += "dist. " + arrowTop
+	case DistanceDesc:
+		sortLabel += "dist. " + arrowDown
+	case TimeAsc:
+		sortLabel += "time " + arrowTop
+	case TimeDesc:
+		sortLabel += "time " + arrowDown
+	}
+
+	// empty label for a single item
+	if len(m.list.VisibleItems()) <= 1 {
+		sortLabel = " "
+	}
+
+	view += lipgloss.NewStyle().PaddingLeft(2).
+		MarginTop(2).
+		MarginBottom(1).
+		Italic(true).
+		Render(sortLabel)
+
+	return view
 }
 
 func (m Model) footerView() string {
@@ -406,38 +436,35 @@ func (m Model) footerView() string {
 	line := strings.Repeat("─", max(0, m.width-len(menu)-1))
 	view := fmt.Sprintf("%s %s", menu, line)
 	if m.showMenu {
-		filterCol2 := "[/]start filter"
+		filterCol2 := "[/]start"
 		if m.list.SettingFilter() {
 			if len(m.list.FilterValue()) > 0 {
-				filterCol2 = "[ENTER]apply filter"
+				filterCol2 = "[ENTER]apply"
 			} else {
-				filterCol2 = "[ESC]cancel filter"
+				filterCol2 = "[ESC]cancel"
 			}
 		}
-		filterCol3 := "[^d]sort by distance"
-		filterCol4 := "[^t]sort by start time"
+		filterCol3 := ""
 		if m.list.IsFiltered() {
-			filterCol3 = "[ESC]clear filter"
-			filterCol4 = ""
+			filterCol3 = "[ESC]clear"
 		}
 		if m.list.SettingFilter() {
-			filterCol3 = ""
-			filterCol4 = ""
 			if len(m.list.FilterValue()) > 0 {
-				filterCol3 = "[ESC]skip filter"
+				filterCol3 = "[ESC]skip"
 			}
 		}
 		rows := [][]string{
 			{"actions", "[r]eload", "[q]uit"},
 			{"list", "[" + arrowTop + "]up", "[" + arrowDown + "]down", "[g]first", "[G]last", "[←/→]switch pages"},
-			{"filter/sort", filterCol2, filterCol3, filterCol4},
+			{"sort", "[^t]ime", "[^d]uration"},
+			{"filter", filterCol2, filterCol3},
 		}
 		table := table.New().
 			Rows(rows...).
 			Border(lipgloss.Border{}).
 			StyleFunc(func(row, col int) lipgloss.Style {
-				switch {
-				case col == 0:
+				switch col {
+				case 0:
 					return lipgloss.NewStyle().PaddingRight(5).Bold(true)
 				default:
 					return lipgloss.NewStyle().PaddingRight(2)
@@ -454,7 +481,7 @@ func (m Model) View() string {
 	footer := m.footerView()
 	footerH := lipgloss.Height(footer)
 	contentHeight := m.height - footerH - 2 // add padding of content
-	m.list.SetHeight(contentHeight)
+	m.list.SetHeight(contentHeight - 3)     // offset for custom footer below list
 	content := lipgloss.JoinHorizontal(lipgloss.Top,
 		leftContentStyle.Render(m.LeftContentView()),
 		rightContentStyle.

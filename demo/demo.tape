@@ -17,8 +17,12 @@ Sleep 3
 Show
 
 # --- sort ---
+Sleep 2000ms
+Ctrl+t
 Sleep 500ms
 Ctrl+t
+Sleep 500ms
+Ctrl+d
 Sleep 500ms
 Ctrl+d
 Sleep 500ms

@@ -70,3 +70,18 @@ func ActivitiesToListItems(acts common.Activities) []list.Item {
 	}
 	return items
 }
+
+func SortItems(items []list.Item, sort ActsSort) []list.Item {
+	acts := ListItemsToActivities(items)
+	switch sort {
+	case DistanceAsc:
+		common.SortBy(common.SortByDistance).Sort(acts)
+	case DistanceDesc:
+		common.SortBy(common.SortByDistance).Reverse(acts)
+	case TimeAsc:
+		common.SortBy(common.SortByTime).Sort(acts)
+	case TimeDesc:
+		common.SortBy(common.SortByTime).Reverse(acts)
+	}
+	return ActivitiesToListItems(acts)
+}
