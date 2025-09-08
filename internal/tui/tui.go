@@ -436,38 +436,35 @@ func (m Model) footerView() string {
 	line := strings.Repeat("─", max(0, m.width-len(menu)-1))
 	view := fmt.Sprintf("%s %s", menu, line)
 	if m.showMenu {
-		filterCol2 := "[/]start filter"
+		filterCol2 := "[/]start"
 		if m.list.SettingFilter() {
 			if len(m.list.FilterValue()) > 0 {
-				filterCol2 = "[ENTER]apply filter"
+				filterCol2 = "[ENTER]apply"
 			} else {
-				filterCol2 = "[ESC]cancel filter"
+				filterCol2 = "[ESC]cancel"
 			}
 		}
-		filterCol3 := "[^d]sort by distance"
-		filterCol4 := "[^t]sort by start time"
+		filterCol3 := ""
 		if m.list.IsFiltered() {
-			filterCol3 = "[ESC]clear filter"
-			filterCol4 = ""
+			filterCol3 = "[ESC]clear"
 		}
 		if m.list.SettingFilter() {
-			filterCol3 = ""
-			filterCol4 = ""
 			if len(m.list.FilterValue()) > 0 {
-				filterCol3 = "[ESC]skip filter"
+				filterCol3 = "[ESC]skip"
 			}
 		}
 		rows := [][]string{
 			{"actions", "[r]eload", "[q]uit"},
 			{"list", "[" + arrowTop + "]up", "[" + arrowDown + "]down", "[g]first", "[G]last", "[←/→]switch pages"},
-			{"filter/sort", filterCol2, filterCol3, filterCol4},
+			{"sort", "[^t]ime", "[^d]uration"},
+			{"filter", filterCol2, filterCol3},
 		}
 		table := table.New().
 			Rows(rows...).
 			Border(lipgloss.Border{}).
 			StyleFunc(func(row, col int) lipgloss.Style {
-				switch {
-				case col == 0:
+				switch col {
+				case 0:
 					return lipgloss.NewStyle().PaddingRight(5).Bold(true)
 				default:
 					return lipgloss.NewStyle().PaddingRight(2)
