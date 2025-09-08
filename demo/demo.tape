@@ -13,7 +13,7 @@ Set Margin 1
 Hide
 Type "go run . --import $IMPORT_PATH"
 Enter
-Sleep 0.2
+Sleep 3
 Show
 
 # --- sort ---
@@ -33,9 +33,10 @@ Sleep 200ms
 Type@100ms "m"
 Type@200ms "/"
 Type@100ms "06."
+Sleep 300ms
 Enter@100ms
+Down@100ms 8
+Up@100ms 8
 Type@500ms "m"
-Down@100ms 2
-Up@100ms 2
 Sleep 200ms
 Escape

@@ -66,7 +66,7 @@ func InitialModel(path string) Model {
 	delegate := NewListDelegate(&s)
 
 	list := list.New([]list.Item{}, &delegate, 20, 0)
-	list.Title = "Activities"
+	list.Title = ""
 
 	// styles for prompt needs to be passed to `FilterInput`
 	fi := list.FilterInput
@@ -82,7 +82,7 @@ func InitialModel(path string) Model {
 	list.Paginator = p
 
 	ls := list.Styles
-	ls.Title = lipgloss.NewStyle().Bold(true)
+	ls.Title = emptyStyle
 	ls.DividerDot = list.Styles.DividerDot.Foreground(noColor)
 	ls.StatusBar = list.Styles.StatusBar.Foreground(noColor)
 	ls.StatusEmpty = emptyStyle
@@ -246,30 +246,44 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) RightContentView() string {
-	visibleItems := ListItemsToActivities(m.list.VisibleItems())
-	sumRows := [][]string{
-		{"time", ActivitiesTotalDuration(visibleItems).Format()},
-		{"distance", ActivitiesTotalDistances(visibleItems).Format()},
-	}
+
 	var sumView string
-	sumView += lipgloss.NewStyle().
-		Bold(true).
-		PaddingRight(4).
-		Border(lipgloss.ASCIIBorder(), false, false, true, false).
-		Render("Σ activities")
-	sumView += br
-	sumTable := table.New().
-		Rows(sumRows...).
-		Border(lipgloss.Border{}).
-		StyleFunc(func(row, col int) lipgloss.Style {
-			switch {
-			case col == 0:
-				return lipgloss.NewStyle().PaddingRight(2).Bold(true)
-			default:
-				return emptyStyle
-			}
-		})
-	sumView += fmt.Sprintf("%s", sumTable)
+	visibleItems := ListItemsToActivities(m.list.VisibleItems())
+	noVisibleActs := len(visibleItems)
+	if noVisibleActs > 0 {
+		label := "activities"
+		if noVisibleActs <= 1 {
+			label = "activity"
+		}
+		labelNoActs := fmt.Sprintf("%d", noVisibleActs)
+		label = fmt.Sprintf("%s %s", labelNoActs, label)
+		sumView += lipgloss.NewStyle().
+			PaddingRight(4).
+			Bold(true).
+			Border(lipgloss.ASCIIBorder(), false, false, true, false).
+			Render(label)
+
+		sumView += br
+
+		sumRows := [][]string{
+			{"total time", ActivitiesTotalDuration(visibleItems).Format()},
+			{"total distance", ActivitiesTotalDistances(visibleItems).Format()},
+		}
+		sumTable := table.New().
+			Rows(sumRows...).
+			Border(lipgloss.Border{}).
+			StyleFunc(func(row, col int) lipgloss.Style {
+				switch col {
+				case 0:
+					return lipgloss.NewStyle().PaddingRight(2).Bold(true)
+				default:
+					return emptyStyle
+				}
+			})
+		sumView += fmt.Sprintf("%s", sumTable)
+	} else {
+		sumView += "No activity found."
+	}
 
 	var detailsView string
 	item := m.list.SelectedItem()
@@ -279,7 +293,7 @@ func (m Model) RightContentView() string {
 			PaddingRight(4).
 			Border(lipgloss.ASCIIBorder(), false, false, true, false).
 			MarginBottom(1).
-			Render(fmt.Sprintf(`activity #%d`, m.list.Index()+1))
+			Render(fmt.Sprintf(`#%d activity`, m.list.Index()+1))
 
 		rows := [][]string{
 			{"date", "..."},
@@ -369,20 +383,18 @@ func (m Model) RightContentView() string {
 }
 
 func (m Model) LeftContentView() string {
-	var view string
+
 	noVisibleActs := len(m.list.VisibleItems())
 	noActs := len(m.list.Items())
-	label := "activities"
-	if noActs <= 1 {
-		label = "activity"
-	}
-	labelNoActs := fmt.Sprintf("%d", noVisibleActs)
+
 	if m.list.IsFiltered() && noVisibleActs != noActs {
-		labelNoActs = fmt.Sprintf("%d/%d", noVisibleActs, len(m.list.Items()))
+		labelNoActs := fmt.Sprintf("%d of %d", noVisibleActs, len(m.list.Items()))
+		m.list.Title = lipgloss.NewStyle().Bold(false).Italic(true).Render(labelNoActs)
+	} else {
+		m.list.Title = lipgloss.NewStyle().Bold(true).Render("All")
 	}
-	m.list.Title = fmt.Sprintf("%s %s", labelNoActs, label)
-	view += m.list.View()
-	return view
+
+	return m.list.View()
 }
 
 func (m Model) footerView() string {
