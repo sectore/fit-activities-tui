@@ -186,7 +186,7 @@ func ParseFile(file string) (*common.ActivityData, error) {
 	}
 	noRecords := len(act.Records)
 	lastRecordIndex := max(noRecords-1, 0)
-	if noSessions <= 0 {
+	if noRecords <= 0 {
 		return nil, fmt.Errorf("no Records found (file %s)", file)
 	}
 
