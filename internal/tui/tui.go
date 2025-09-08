@@ -118,11 +118,11 @@ func (m *Model) sortActs() tea.Cmd {
 	items := SortItems(m.list.Items(), m.actsSort)
 
 	// Note: `SetItems` resets the filter internally.
-	// Fix: Remember filter text BEFORE ...
+	// That's why we need to remember filter text BEFORE ...
 	filterText := m.list.FilterInput.Value()
 	// ... updating ALL items ...
 	cmd := m.list.SetItems(items)
-	// ... and set filter text again to set filter internally.
+	// ... to set filter text again, which sets filter internally.
 	if filterText != "" {
 		m.list.SetFilterText(filterText)
 	}
