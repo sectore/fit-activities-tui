@@ -190,20 +190,21 @@ func (act Activity) TotalDistance() Distance {
 	return NewDistance(0)
 }
 
+// default time: January 1, 1970 UTC
+var defaultTime = time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC)
+
 func (act Activity) StartTime() Time {
 	if data, ok := asyncdata.Success(act.Data); ok {
 		return data.StartTime
 	}
-	// default: January 1, 1970 UTC
-	return NewTime(time.Date(1970, 0, 0, 0, 0, 0, 0, time.Local))
+	return NewTime(defaultTime)
 }
 
 func (act Activity) FinishTime() Time {
 	if data, ok := asyncdata.Success(act.Data); ok {
 		return data.FinishTime
 	}
-	// default: January 1, 1970 UTC
-	return NewTime(time.Date(1970, 0, 0, 0, 0, 0, 0, time.Local))
+	return NewTime(defaultTime)
 }
 
 func (act Activity) GetTotalDuration() Duration {
