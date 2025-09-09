@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"sort"
 
-	"strconv"
 	"strings"
 	"time"
 
@@ -86,7 +85,7 @@ type DurationStats struct {
 func (time Duration) Format() string {
 	seconds := time.Value / 1000
 	if seconds < 60 {
-		return strconv.Itoa(int(seconds))
+		return fmt.Sprintf("%ds", seconds)
 	} else if seconds < 3600 {
 		minutes := seconds / 60
 		remainingSeconds := seconds % 60
