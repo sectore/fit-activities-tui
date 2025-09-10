@@ -7,48 +7,8 @@ import (
 	"github.com/muktihari/fit/decoder"
 	"github.com/muktihari/fit/profile/basetype"
 	"github.com/muktihari/fit/profile/filedef"
-	"github.com/muktihari/fit/profile/mesgdef"
 	"github.com/sectore/fit-activities-tui/internal/common"
 )
-
-func parseDuration(ss []*mesgdef.Session) common.DurationStats {
-	time := common.DurationStats{
-		Total:  common.NewDuration(0),
-		Active: common.NewDuration(0),
-		Pause:  common.NewDuration(0),
-	}
-	for _, s := range ss {
-		total := s.TotalElapsedTime
-		if total != basetype.Uint32Invalid {
-			time.Total.Value += total
-		}
-		active := s.TotalTimerTime
-		if active != basetype.Uint32Invalid {
-			time.Active.Value += active
-		}
-	}
-	time.Pause.Value = time.Total.Value - time.Active.Value
-	return time
-}
-func parseElevation(ss []*mesgdef.Session) common.ElevationStats {
-	elevation := common.ElevationStats{
-		Ascents:  common.NewElevation(0),
-		Descents: common.NewElevation(0),
-	}
-
-	for _, s := range ss {
-		value := s.TotalAscent
-		if value != basetype.Uint16Invalid {
-			elevation.Ascents.Value += value
-		}
-		value = s.TotalDescent
-		if value != basetype.Uint16Invalid {
-			elevation.Descents.Value += value
-		}
-	}
-
-	return elevation
-}
 
 func ParseFile(file string) (*common.ActivityData, error) {
 	f, err := os.Open(file)
@@ -184,16 +144,48 @@ func ParseFile(file string) (*common.ActivityData, error) {
 	}
 
 	totalDistance := common.NewDistance(0)
-	for _, s := range act.Sessions {
-		totalDistance.Value += s.TotalDistance
+	durationStats := common.DurationStats{
+		Total:  common.NewDuration(0),
+		Active: common.NewDuration(0),
+		Pause:  common.NewDuration(0),
+	}
+	elevationStats := common.ElevationStats{
+		Ascents:  common.NewElevation(0),
+		Descents: common.NewElevation(0),
 	}
 
+	for _, s := range act.Sessions {
+		totalDistance.Value += s.TotalDistance
+
+		// Duration stats calculation
+		total := s.TotalElapsedTime
+		if total != basetype.Uint32Invalid {
+			durationStats.Total.Value += total
+		}
+		active := s.TotalTimerTime
+		if active != basetype.Uint32Invalid {
+			durationStats.Active.Value += active
+		}
+
+		// Elevation stats calculation
+		ascentValue := s.TotalAscent
+		if ascentValue != basetype.Uint16Invalid {
+			elevationStats.Ascents.Value += ascentValue
+		}
+		descentValue := s.TotalDescent
+		if descentValue != basetype.Uint16Invalid {
+			elevationStats.Descents.Value += descentValue
+		}
+	}
+	// calculate pause
+	durationStats.Pause.Value = durationStats.Total.Value - durationStats.Active.Value
+
 	var activityData = common.ActivityData{
-		Duration:      parseDuration(act.Sessions),
+		Duration:      durationStats,
 		TotalDistance: totalDistance,
 		Temperature:   temperatureStats,
 		Speed:         speedStats,
-		Elevation:     parseElevation(act.Sessions),
+		Elevation:     elevationStats,
 		NoSessions:    uint32(noSessions),
 		Records:       records,
 		GpsAccuracy:   gpsAccuracyStats,
