@@ -303,6 +303,7 @@ func (m Model) RightContentView() string {
 			{"time", "..."},
 			{"", "..."},
 			{"speed", "..."},
+			{"", "..."},
 			{"elevation", "..."},
 			{"temperature", "..."},
 			{"gps accuracy", "..."},
@@ -327,9 +328,9 @@ func (m Model) RightContentView() string {
 				)
 				// time stacked bar (active/pause)
 				rows[3][1] = HorizontalStackedBar(
-					act.Duration.Active.Value,
+					float32(act.Duration.Active.Value),
 					BarEmptyHalf,
-					act.Duration.Pause.Value,
+					float32(act.Duration.Pause.Value),
 					BarEmpty,
 					50)
 
@@ -339,15 +340,23 @@ func (m Model) RightContentView() string {
 					arrowTop,
 					act.Speed.Max.Format())
 
+				// speed stacked bar (avg/max)
+				rows[5][1] = HorizontalStackedBar(
+					act.Speed.Avg.Value,
+					BarEmptyHalf,
+					act.Speed.Max.Value,
+					BarEmpty,
+					50)
+
 				// Elevation
-				rows[5][1] = fmt.Sprintf(`%s %s %s %s`,
+				rows[6][1] = fmt.Sprintf(`%s %s %s %s`,
 					arrowTop,
 					col(act.Elevation.Ascents.Format()),
 					arrowDown,
 					act.Elevation.Descents.Format(),
 				)
 				// temperature
-				rows[6][1] = fmt.Sprintf(`⌀ %s %s %s %s %s`,
+				rows[7][1] = fmt.Sprintf(`⌀ %s %s %s %s %s`,
 					col(act.Temperature.Avg.Format()),
 					arrowDown,
 					col(act.Temperature.Min.Format()),
@@ -355,7 +364,7 @@ func (m Model) RightContentView() string {
 					act.Temperature.Max.Format(),
 				)
 				// gps
-				rows[7][1] = fmt.Sprintf(`⌀ %s %s %s %s %s`,
+				rows[8][1] = fmt.Sprintf(`⌀ %s %s %s %s %s`,
 					col(act.GpsAccuracy.Avg.Format()),
 					arrowDown,
 					col(act.GpsAccuracy.Min.Format()),
@@ -363,9 +372,9 @@ func (m Model) RightContentView() string {
 					act.GpsAccuracy.Max.Format(),
 				)
 				// no. sessions
-				rows[8][1] = fmt.Sprintf(`%d`, act.NoSessions)
+				rows[9][1] = fmt.Sprintf(`%d`, act.NoSessions)
 				// no. records
-				rows[9][1] = fmt.Sprintf(`%d`, act.NoRecords)
+				rows[10][1] = fmt.Sprintf(`%d`, act.NoRecords)
 			}
 			rows = append(rows,
 				[]string{"file", filepath.Base(act.Path)},

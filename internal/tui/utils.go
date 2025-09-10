@@ -88,9 +88,9 @@ func SortItems(items []list.Item, sort ActsSort) []list.Item {
 	return ActivitiesToListItems(acts)
 }
 
-func HorizontalStackedBar(value1 uint32, value1Block string, value2 uint32, value2Block string, maxBlocks int) string {
+func HorizontalStackedBar(value1 float32, value1Block string, value2 float32, value2Block string, maxBlocks int) string {
 	total := value1 + value2
-	value2Percent := value2 * uint32(maxBlocks) / total
+	value2Percent := value2 * float32(maxBlocks) / total
 	// integer is needed to count blocks
 	noValue2Blocks := int(value2Percent)
 	// adjust to still show small `pauseValue`s < 1
