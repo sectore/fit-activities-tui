@@ -306,6 +306,7 @@ func (m Model) RightContentView() string {
 			{"speed", "..."},
 			{"", "..."},
 			{"elevation", "..."},
+			{"", "..."},
 			{"temperature", "..."},
 			{"gps accuracy", "..."},
 			{"sessions", "..."},
@@ -351,15 +352,20 @@ func (m Model) RightContentView() string {
 					BarEmpty,
 					BAR_WIDTH)
 
-				// Elevation
-				rows[7][1] = fmt.Sprintf(`%s %s %s %s`,
-					arrowTop,
-					col(act.Elevation.Ascents.Format()),
-					arrowDown,
-					act.Elevation.Descents.Format(),
-				)
+				// elevation
+				rows[7][1] = col1(arrowTop+" "+act.Elevation.Ascents.Format()) +
+					col2(arrowDown+" "+act.Elevation.Descents.Format())
+
+				// elevation stacked bar (ascents/descents)
+				rows[8][1] = HorizontalStackedBar(
+					float32(act.Elevation.Ascents.Value),
+					BarEmptyHalf,
+					float32(act.Elevation.Descents.Value),
+					BarEmpty,
+					BAR_WIDTH)
+
 				// temperature
-				rows[8][1] = fmt.Sprintf(`⌀ %s %s %s %s %s`,
+				rows[9][1] = fmt.Sprintf(`⌀ %s %s %s %s %s`,
 					col(act.Temperature.Avg.Format()),
 					arrowDown,
 					col(act.Temperature.Min.Format()),
@@ -367,7 +373,7 @@ func (m Model) RightContentView() string {
 					act.Temperature.Max.Format(),
 				)
 				// gps
-				rows[9][1] = fmt.Sprintf(`⌀ %s %s %s %s %s`,
+				rows[10][1] = fmt.Sprintf(`⌀ %s %s %s %s %s`,
 					col(act.GpsAccuracy.Avg.Format()),
 					arrowDown,
 					col(act.GpsAccuracy.Min.Format()),
@@ -375,9 +381,9 @@ func (m Model) RightContentView() string {
 					act.GpsAccuracy.Max.Format(),
 				)
 				// no. sessions
-				rows[10][1] = fmt.Sprintf(`%d`, act.NoSessions)
+				rows[11][1] = fmt.Sprintf(`%d`, act.NoSessions)
 				// no. records
-				rows[11][1] = fmt.Sprintf(`%d`, act.NoRecords)
+				rows[12][1] = fmt.Sprintf(`%d`, act.NoRecords)
 			}
 			rows = append(rows,
 				[]string{"file", filepath.Base(act.Path)},
@@ -389,6 +395,8 @@ func (m Model) RightContentView() string {
 					switch {
 					case col == 0:
 						return lipgloss.NewStyle().PaddingRight(2).Bold(true)
+					case row == 1 || row == 10:
+						return lipgloss.NewStyle().MarginBottom(2)
 					default:
 						return lipgloss.NewStyle().PaddingRight(1)
 					}
