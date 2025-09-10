@@ -7,9 +7,9 @@ import (
 func TestHorizontalStackedBar(t *testing.T) {
 	tests := []struct {
 		name        string
-		value1      uint32
+		value1      float32
 		value1Block string
-		value2      uint32
+		value2      float32
 		value2Block string
 		maxBlocks   int
 		expected    string
