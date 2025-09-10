@@ -141,17 +141,37 @@ func (d Distance) Format() string {
 	}
 }
 
+type RecordData struct {
+	Time        Time
+	Distance    Distance
+	Speed       Speed
+	Temperature Temperature
+	Elevation   Elevation
+	GpsAccuracy GpsAccuracy
+}
+
 type ActivityData struct {
-	StartTime     Time
-	FinishTime    Time
 	Duration      DurationStats
 	TotalDistance Distance
 	Speed         SpeedStats
 	Temperature   TemperatureStats
 	Elevation     ElevationStats
 	NoSessions    uint32
-	NoRecords     uint32
+	Records       []RecordData
 	GpsAccuracy   GpsAccuracyStats
+}
+
+func (ad ActivityData) NoRecords() int {
+	return len(ad.Records)
+}
+
+func (ad ActivityData) StartTime() Time {
+	return ad.Records[0].Time
+}
+
+func (ad ActivityData) FinishTime() Time {
+	last := max(ad.NoRecords()-1, 0)
+	return ad.Records[last].Time
 }
 
 type ActivityAD = asyncdata.AsyncData[error, ActivityData]
@@ -164,7 +184,7 @@ type Activity struct {
 func (act Activity) FilterValue() string {
 	var value string
 	if data, ok := asyncdata.Success(act.Data); ok {
-		value = data.StartTime.Format()
+		value = data.StartTime().Format()
 	}
 	return value
 
@@ -173,7 +193,7 @@ func (act Activity) FilterValue() string {
 func (act Activity) Title() string {
 	var title string
 	if data, ok := asyncdata.Success(act.Data); ok {
-		title = data.StartTime.Format()
+		title = data.StartTime().Format()
 	}
 	return title
 }
@@ -194,14 +214,14 @@ var defaultTime = time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC)
 
 func (act Activity) StartTime() Time {
 	if data, ok := asyncdata.Success(act.Data); ok {
-		return data.StartTime
+		return data.StartTime()
 	}
 	return NewTime(defaultTime)
 }
 
 func (act Activity) FinishTime() Time {
 	if data, ok := asyncdata.Success(act.Data); ok {
-		return data.FinishTime
+		return data.FinishTime()
 	}
 	return NewTime(defaultTime)
 }
