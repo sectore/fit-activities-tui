@@ -308,6 +308,7 @@ func (m Model) RightContentView() string {
 			{"elevation", "..."},
 			{"", "..."},
 			{"temperature", "..."},
+			{"", "..."},
 			{"gps accuracy", "..."},
 			{"sessions", "..."},
 			{"records", "..."},
@@ -365,15 +366,18 @@ func (m Model) RightContentView() string {
 					BAR_WIDTH)
 
 				// temperature
-				rows[9][1] = fmt.Sprintf(`⌀ %s %s %s %s %s`,
-					col(act.Temperature.Avg.Format()),
-					arrowDown,
-					col(act.Temperature.Min.Format()),
-					arrowTop,
-					act.Temperature.Max.Format(),
-				)
+				rows[9][1] = col1("⌀ "+act.Temperature.Avg.Format()+" ") +
+					col2("max "+act.Temperature.Max.Format())
+
+				// temperature stacked bar (avg/max)
+				rows[10][1] = HorizontalStackedBar(
+					float32(act.Temperature.Avg.Value),
+					BarEmptyHalf,
+					float32(act.Temperature.Max.Value),
+					BarEmpty,
+					BAR_WIDTH)
 				// gps
-				rows[10][1] = fmt.Sprintf(`⌀ %s %s %s %s %s`,
+				rows[11][1] = fmt.Sprintf(`⌀ %s %s %s %s %s`,
 					col(act.GpsAccuracy.Avg.Format()),
 					arrowDown,
 					col(act.GpsAccuracy.Min.Format()),
@@ -381,9 +385,9 @@ func (m Model) RightContentView() string {
 					act.GpsAccuracy.Max.Format(),
 				)
 				// no. sessions
-				rows[11][1] = fmt.Sprintf(`%d`, act.NoSessions)
+				rows[12][1] = fmt.Sprintf(`%d`, act.NoSessions)
 				// no. records
-				rows[12][1] = fmt.Sprintf(`%d`, act.NoRecords)
+				rows[13][1] = fmt.Sprintf(`%d`, act.NoRecords)
 			}
 			rows = append(rows,
 				[]string{"file", filepath.Base(act.Path)},
