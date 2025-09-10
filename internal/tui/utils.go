@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"strings"
+
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/sectore/fit-activities-tui/internal/asyncdata"
 	"github.com/sectore/fit-activities-tui/internal/common"
@@ -84,4 +86,19 @@ func SortItems(items []list.Item, sort ActsSort) []list.Item {
 		common.SortBy(common.SortByTime).Reverse(acts)
 	}
 	return ActivitiesToListItems(acts)
+}
+
+func HorizontalStackedBar(value1 float32, value1Block string, value2 float32, value2Block string, maxBlocks int) string {
+	total := value1 + value2
+	value2Percent := value2 * float32(maxBlocks) / total
+	// integer is needed to count blocks
+	noValue2Blocks := int(value2Percent)
+	// adjust to still show small `pauseValue`s < 1
+	if noValue2Blocks == 0 && value2 > 0 {
+		noValue2Blocks = 1
+	}
+	// other blocks are blocks for `value1`
+	noValue1Blocks := maxBlocks - noValue2Blocks
+	return strings.Repeat(value1Block, noValue1Blocks) +
+		strings.Repeat(value2Block, noValue2Blocks)
 }

@@ -43,6 +43,10 @@ const (
 	arrowDown      = "↓"
 	BulletPointBig = "●"
 	BulletPoint    = "∙"
+	BarEmpty       = "░"
+	BarEmptyHalf   = "▒"
+	BarFullHalf    = "▓"
+	BarFull        = "█"
 )
 
 var (
@@ -297,14 +301,22 @@ func (m Model) RightContentView() string {
 			{"date", "..."},
 			{"distance", "..."},
 			{"time", "..."},
+			{"", "..."},
+			{"", "..."},
 			{"speed", "..."},
+			{"", "..."},
 			{"elevation", "..."},
+			{"", "..."},
 			{"temperature", "..."},
+			{"", "..."},
 			{"gps accuracy", "..."},
+			{"", "..."},
 			{"sessions", "..."},
 			{"records", "..."},
 		}
-		var col = lipgloss.NewStyle().PaddingRight(3).Render
+		const BAR_WIDTH = 50
+		var col1 = lipgloss.NewStyle().Width(BAR_WIDTH / 2).Render
+		var col2 = lipgloss.NewStyle().Width(BAR_WIDTH / 2).Align(lipgloss.Right).Render
 		if act, ok := item.(common.Activity); ok {
 			if act, ok := asyncdata.Success(act.Data); ok {
 				// date
@@ -314,45 +326,72 @@ func (m Model) RightContentView() string {
 					act.FinishTime.FormatHhMm()
 				// distance
 				rows[1][1] = act.TotalDistance.Format()
-				// time
-				rows[2][1] = fmt.Sprintf(`active %s pause %s Σ %s`,
-					col(act.Duration.Active.Format()),
-					col(act.Duration.Pause.Format()),
-					act.Duration.Total.Format(),
-				)
-				// speed
-				rows[3][1] = fmt.Sprintf(`⌀ %s %s %s`,
-					col(act.Speed.Avg.Format()),
-					arrowTop,
-					act.Speed.Max.Format())
+				// time text
+				rows[2][1] = "total " + act.Duration.Total.Format()
+				rows[3][1] = col1("active " + act.Duration.Active.Format() + " ")
+				if act.Duration.Pause.Value > 0 {
+					rows[3][1] += col2("pause " + act.Duration.Pause.Format())
+				}
 
-				// Elevation
-				rows[4][1] = fmt.Sprintf(`%s %s %s %s`,
-					arrowTop,
-					col(act.Elevation.Ascents.Format()),
-					arrowDown,
-					act.Elevation.Descents.Format(),
-				)
+				// time stacked bar (active/pause)
+				rows[4][1] = HorizontalStackedBar(
+					float32(act.Duration.Active.Value),
+					BarEmptyHalf,
+					float32(act.Duration.Pause.Value),
+					BarEmpty,
+					BAR_WIDTH)
+
+				// speed
+				rows[5][1] = col1("⌀ "+act.Speed.Avg.Format()) +
+					col2("max "+act.Speed.Max.Format())
+
+				// speed stacked bar (avg/max)
+				rows[6][1] = HorizontalStackedBar(
+					act.Speed.Avg.Value,
+					BarEmptyHalf,
+					act.Speed.Max.Value,
+					BarEmpty,
+					BAR_WIDTH)
+
+				// elevation
+				rows[7][1] = col1(arrowTop+" "+act.Elevation.Ascents.Format()) +
+					col2(arrowDown+" "+act.Elevation.Descents.Format())
+
+				// elevation stacked bar (ascents/descents)
+				rows[8][1] = HorizontalStackedBar(
+					float32(act.Elevation.Ascents.Value),
+					BarEmptyHalf,
+					float32(act.Elevation.Descents.Value),
+					BarEmpty,
+					BAR_WIDTH)
+
 				// temperature
-				rows[5][1] = fmt.Sprintf(`⌀ %s %s %s %s %s`,
-					col(act.Temperature.Avg.Format()),
-					arrowDown,
-					col(act.Temperature.Min.Format()),
-					arrowTop,
-					act.Temperature.Max.Format(),
-				)
+				rows[9][1] = col1("⌀ "+act.Temperature.Avg.Format()) +
+					col2("max "+act.Temperature.Max.Format())
+				// temperature stacked bar (avg/max)
+				rows[10][1] = HorizontalStackedBar(
+					float32(act.Temperature.Avg.Value),
+					BarEmptyHalf,
+					float32(act.Temperature.Max.Value),
+					BarEmpty,
+					BAR_WIDTH)
+
 				// gps
-				rows[6][1] = fmt.Sprintf(`⌀ %s %s %s %s %s`,
-					col(act.GpsAccuracy.Avg.Format()),
-					arrowDown,
-					col(act.GpsAccuracy.Min.Format()),
-					arrowTop,
-					act.GpsAccuracy.Max.Format(),
-				)
+				rows[11][1] = col1("⌀ "+act.GpsAccuracy.Avg.Format()) +
+					col2("max "+act.GpsAccuracy.Max.Format())
+
+				// gps stacked bar (avg/max)
+				rows[12][1] = HorizontalStackedBar(
+					float32(act.GpsAccuracy.Avg.Value),
+					BarEmptyHalf,
+					float32(act.GpsAccuracy.Max.Value),
+					BarEmpty,
+					BAR_WIDTH)
+
 				// no. sessions
-				rows[7][1] = fmt.Sprintf(`%d`, act.NoSessions)
+				rows[13][1] = fmt.Sprintf(`%d`, act.NoSessions)
 				// no. records
-				rows[8][1] = fmt.Sprintf(`%d`, act.NoRecords)
+				rows[14][1] = fmt.Sprintf(`%d`, act.NoRecords)
 			}
 			rows = append(rows,
 				[]string{"file", filepath.Base(act.Path)},
@@ -364,8 +403,8 @@ func (m Model) RightContentView() string {
 					switch {
 					case col == 0:
 						return lipgloss.NewStyle().PaddingRight(2).Bold(true)
-					case row == 2 || row == 6:
-						return lipgloss.NewStyle().MarginBottom(1)
+					case row == 1 || row == 12:
+						return lipgloss.NewStyle().MarginBottom(2)
 					default:
 						return lipgloss.NewStyle().PaddingRight(1)
 					}

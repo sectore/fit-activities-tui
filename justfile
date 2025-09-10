@@ -7,9 +7,9 @@ alias r := run
 # Runs the app by importing FIT files from given path.
 [group('dev')]
 run path:
-   go run . --import {{path}}
+    go run . --import {{ path }}
 
-# demo
+# demos
 
 alias d := demo
 
@@ -17,3 +17,9 @@ alias d := demo
 [group('demo')]
 demo:
     vhs demo/demo.tape
+
+alias dc := demo-charts
+
+[group('demo')]
+demo-charts:
+    vhs demo/charts.tape
