@@ -1,7 +1,7 @@
 Output demo/demo.gif
 
 # https://github.com/charmbracelet/vhs/blob/main/THEMES.md
-Set Theme "Catppuccin Frappe"
+Set Theme "PencilLight"
 
 Set FontSize 14
 Set Width 1000
