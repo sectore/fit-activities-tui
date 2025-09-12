@@ -7,154 +7,8 @@ import (
 	"github.com/muktihari/fit/decoder"
 	"github.com/muktihari/fit/profile/basetype"
 	"github.com/muktihari/fit/profile/filedef"
-	"github.com/muktihari/fit/profile/mesgdef"
 	"github.com/sectore/fit-activities-tui/internal/common"
 )
-
-func parseSpeed(rs []*mesgdef.Record) common.SpeedStats {
-	speed := common.SpeedStats{
-		Avg: common.NewSpeed(0),
-		Max: common.NewSpeed(0),
-	}
-	var count, total uint
-	for _, r := range rs {
-		value := r.Speed
-		// don't count invalid values
-		if value != basetype.Uint16Invalid {
-			value_f := float32(r.Speed)
-			// compare max
-			if speed.Max.Value < value_f {
-				speed.Max.Value = value_f
-			}
-			count += 1
-			total += uint(value)
-		}
-	}
-	// skip if no valid values found
-	if count == 0 {
-		return speed
-	}
-
-	avg := float32(total / count)
-	speed.Avg.Value = avg
-	return speed
-
-}
-
-func parseGpsAccurancies(rs []*mesgdef.Record) common.GpsAccuracyStats {
-	// start w/ empty stats
-	gpsAccurancy := common.GpsAccuracyStats{
-		Avg: common.NewGpsAccuracy(0),
-		Min: common.NewGpsAccuracy(0),
-		Max: common.NewGpsAccuracy(0),
-	}
-	var sum, count uint
-	for _, r := range rs {
-		value := r.GpsAccuracy
-		// don't count invalid values
-		if value != basetype.Uint8Invalid {
-			value_f := float32(value)
-			// override default zero value
-			if count == 0 {
-				gpsAccurancy.Min.Value = value_f
-			}
-			// compare min
-			if value_f < gpsAccurancy.Min.Value {
-				gpsAccurancy.Min.Value = value_f
-			}
-			// compare max
-			if value_f > gpsAccurancy.Max.Value {
-				gpsAccurancy.Max.Value = value_f
-			}
-			count += 1
-			sum += uint(value)
-		}
-	}
-	// skip if no valid values found
-	if count == 0 {
-		return gpsAccurancy
-	}
-
-	gpsAccurancy.Avg.Value = float32(sum / count)
-	return gpsAccurancy
-}
-
-func parseDuration(ss []*mesgdef.Session) common.DurationStats {
-	time := common.DurationStats{
-		Total:  common.NewDuration(0),
-		Active: common.NewDuration(0),
-		Pause:  common.NewDuration(0),
-	}
-	for _, s := range ss {
-		total := s.TotalElapsedTime
-		if total != basetype.Uint32Invalid {
-			time.Total.Value += total
-		}
-		active := s.TotalTimerTime
-		if active != basetype.Uint32Invalid {
-			time.Active.Value += active
-		}
-	}
-	time.Pause.Value = time.Total.Value - time.Active.Value
-	return time
-}
-func parseElevation(ss []*mesgdef.Session) common.ElevationStats {
-	elevation := common.ElevationStats{
-		Ascents:  common.NewElevation(0),
-		Descents: common.NewElevation(0),
-	}
-
-	for _, s := range ss {
-		value := s.TotalAscent
-		if value != basetype.Uint16Invalid {
-			elevation.Ascents.Value += value
-		}
-		value = s.TotalDescent
-		if value != basetype.Uint16Invalid {
-			elevation.Descents.Value += value
-		}
-	}
-
-	return elevation
-}
-
-func parseTemperature(rs []*mesgdef.Record) common.TemperatureStats {
-
-	temperature := common.TemperatureStats{
-		Min: common.NewTemperature(0),
-		Max: common.NewTemperature(0),
-		Avg: common.NewTemperature(0),
-	}
-	var sum, count uint
-	for _, r := range rs {
-		value := r.Temperature
-		// don't count invalid values
-		if value != basetype.Sint8Invalid {
-			value_f := float32(value)
-			// override default zero value
-			if count == 0 {
-				temperature.Min.Value = value_f
-			}
-			// compare min
-			if value_f < temperature.Min.Value {
-				temperature.Min.Value = value_f
-			}
-			// compare max
-			if value_f > temperature.Max.Value {
-				temperature.Max.Value = value_f
-			}
-			count += 1
-			sum += uint(value)
-		}
-	}
-	// skip if no valid values found
-	if count == 0 {
-		return temperature
-	}
-
-	temperature.Avg.Value = float32(sum / count)
-	return temperature
-}
 
 func ParseFile(file string) (*common.ActivityData, error) {
 	f, err := os.Open(file)
@@ -184,31 +38,157 @@ func ParseFile(file string) (*common.ActivityData, error) {
 	if noSessions <= 0 {
 		return nil, fmt.Errorf("no Sessions found (file %s)", file)
 	}
-	noRecords := len(act.Records)
-	lastRecordIndex := max(noRecords-1, 0)
-	if noRecords <= 0 {
+
+	if len(act.Records) <= 0 {
 		return nil, fmt.Errorf("no Records found (file %s)", file)
 	}
 
-	startTime := common.NewTime(act.Records[0].Timestamp.Local())
-	finishTime := common.NewTime(act.Records[lastRecordIndex].Timestamp.Local())
+	var records []common.RecordData
+	speedStats := common.SpeedStats{
+		Avg: common.NewSpeed(0),
+		Max: common.NewSpeed(0),
+	}
+	var speedCount, speedTotal uint
 
-	totalDistance := common.NewDistance(0)
-	for _, s := range act.Sessions {
-		totalDistance.Value += s.TotalDistance
+	temperatureStats := common.TemperatureStats{
+		Min: common.NewTemperature(0),
+		Max: common.NewTemperature(0),
+		Avg: common.NewTemperature(0),
+	}
+	var tempSum, tempCount uint
+
+	gpsAccuracyStats := common.GpsAccuracyStats{
+		Avg: common.NewGpsAccuracy(0),
+		Min: common.NewGpsAccuracy(0),
+		Max: common.NewGpsAccuracy(0),
+	}
+	var gpsSum, gpsCount uint
+
+	for _, r := range act.Records {
+		record := common.RecordData{
+			Time:        common.NewTime(r.Timestamp.Local()),
+			Distance:    common.NewDistance(r.Distance),
+			Speed:       common.NewSpeed(float32(r.Speed)),
+			Temperature: common.NewTemperature(float32(r.Temperature)),
+			Elevation:   common.NewElevation(r.Altitude),
+			GpsAccuracy: common.NewGpsAccuracy(float32(r.GpsAccuracy)),
+		}
+		records = append(records, record)
+
+		// Speed stats calculation
+		speedValue := r.Speed
+		if speedValue != basetype.Uint16Invalid {
+			speedValue_f := float32(r.Speed)
+			if speedStats.Max.Value < speedValue_f {
+				speedStats.Max.Value = speedValue_f
+			}
+			speedCount += 1
+			speedTotal += uint(speedValue)
+		}
+
+		// Calculate speed average
+		if speedCount > 0 {
+			avg := float32(speedTotal / speedCount)
+			speedStats.Avg.Value = avg
+		}
+
+		// Temperature stats calculation
+		tempValue := r.Temperature
+		if tempValue != basetype.Sint8Invalid {
+			tempValue_f := float32(tempValue)
+			// override default zero value
+			if tempCount == 0 {
+				temperatureStats.Min.Value = tempValue_f
+			}
+			// compare min
+			if tempValue_f < temperatureStats.Min.Value {
+				temperatureStats.Min.Value = tempValue_f
+			}
+			// compare max
+			if tempValue_f > temperatureStats.Max.Value {
+				temperatureStats.Max.Value = tempValue_f
+			}
+			tempCount += 1
+			tempSum += uint(tempValue)
+		}
+
+		// Calculate temperature average
+		if tempCount > 0 {
+			temperatureStats.Avg.Value = float32(tempSum / tempCount)
+		}
+
+		// GPS accuracy stats calculation
+		gpsValue := r.GpsAccuracy
+		if gpsValue != basetype.Uint8Invalid {
+			gpsValue_f := float32(gpsValue)
+			// override default zero value
+			if gpsCount == 0 {
+				gpsAccuracyStats.Min.Value = gpsValue_f
+			}
+			// compare min
+			if gpsValue_f < gpsAccuracyStats.Min.Value {
+				gpsAccuracyStats.Min.Value = gpsValue_f
+			}
+			// compare max
+			if gpsValue_f > gpsAccuracyStats.Max.Value {
+				gpsAccuracyStats.Max.Value = gpsValue_f
+			}
+			gpsCount += 1
+			gpsSum += uint(gpsValue)
+		}
 	}
 
+	// Calculate GPS accuracy average
+	if gpsCount > 0 {
+		gpsAccuracyStats.Avg.Value = float32(gpsSum / gpsCount)
+	}
+
+	totalDistance := common.NewDistance(0)
+	durationStats := common.DurationStats{
+		Total:  common.NewDuration(0),
+		Active: common.NewDuration(0),
+		Pause:  common.NewDuration(0),
+	}
+	elevationStats := common.ElevationStats{
+		Ascents:  common.NewElevation(0),
+		Descents: common.NewElevation(0),
+	}
+
+	for _, s := range act.Sessions {
+		totalDistance.Value += s.TotalDistance
+
+		// Duration stats calculation
+		total := s.TotalElapsedTime
+		if total != basetype.Uint32Invalid {
+			durationStats.Total.Value += total
+		}
+		active := s.TotalTimerTime
+		if active != basetype.Uint32Invalid {
+			durationStats.Active.Value += active
+		}
+
+		// Elevation stats calculation
+		ascentValue := s.TotalAscent
+		if ascentValue != basetype.Uint16Invalid {
+			elevationStats.Ascents.Value += ascentValue
+		}
+		descentValue := s.TotalDescent
+		if descentValue != basetype.Uint16Invalid {
+			elevationStats.Descents.Value += descentValue
+		}
+	}
+	// calculate pause
+	durationStats.Pause.Value = durationStats.Total.Value - durationStats.Active.Value
+
 	var activityData = common.ActivityData{
-		StartTime:     startTime,
-		FinishTime:    finishTime,
-		Duration:      parseDuration(act.Sessions),
+		Duration:      durationStats,
 		TotalDistance: totalDistance,
-		Temperature:   parseTemperature(act.Records),
-		Speed:         parseSpeed(act.Records),
-		Elevation:     parseElevation(act.Sessions),
+		Temperature:   temperatureStats,
+		Speed:         speedStats,
+		Elevation:     elevationStats,
 		NoSessions:    uint32(noSessions),
-		NoRecords:     uint32(noRecords),
-		GpsAccuracy:   parseGpsAccurancies(act.Records),
+		Records:       records,
+		GpsAccuracy:   gpsAccuracyStats,
 	}
 
 	return &activityData, nil

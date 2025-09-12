@@ -320,10 +320,10 @@ func (m Model) RightContentView() string {
 		if act, ok := item.(common.Activity); ok {
 			if act, ok := asyncdata.Success(act.Data); ok {
 				// date
-				rows[0][1] = lipgloss.NewStyle().PaddingRight(4).Render(act.StartTime.FormatDate()) +
-					act.StartTime.FormatHhMm() +
+				rows[0][1] = lipgloss.NewStyle().PaddingRight(4).Render(act.StartTime().FormatDate()) +
+					act.StartTime().FormatHhMm() +
 					"-" +
-					act.FinishTime.FormatHhMm()
+					act.FinishTime().FormatHhMm()
 				// distance
 				rows[1][1] = act.TotalDistance.Format()
 				// time text
@@ -391,7 +391,7 @@ func (m Model) RightContentView() string {
 				// no. sessions
 				rows[13][1] = fmt.Sprintf(`%d`, act.NoSessions)
 				// no. records
-				rows[14][1] = fmt.Sprintf(`%d`, act.NoRecords)
+				rows[14][1] = fmt.Sprintf(`%d`, act.NoRecords())
 			}
 			rows = append(rows,
 				[]string{"file", filepath.Base(act.Path)},
