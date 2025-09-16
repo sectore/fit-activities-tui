@@ -144,8 +144,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if m.playLiveData {
 		item := m.list.SelectedItem()
 		if act, ok := item.(common.Activity); ok {
-			if adPtr, ok := asyncdata.Success(act.Data); ok {
-				ad := *adPtr // Dereference to get *ActivityData
+			if ad, ok := asyncdata.Success(act.Data); ok {
+				ad := *ad
 				ad.CountRecordIndex()
 			}
 		}
@@ -158,8 +158,32 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		log.Printf("key %s", msg.String())
 		switch msg.String() {
-		// reload data
+
 		case "r":
+			// reset `selectedRecordIndex` of SELECTED item
+			if !m.list.SettingFilter() {
+				item := m.list.SelectedItem()
+				if act, ok := item.(common.Activity); ok {
+					if ad, ok := asyncdata.Success(act.Data); ok {
+						ad := *ad
+						ad.ResetRecordIndex()
+					}
+				}
+			}
+		case "ctrl+r":
+			// reset `selectedRecordIndex` of ALL items
+			if !m.list.SettingFilter() {
+				for _, item := range m.list.Items() {
+					if act, ok := item.(common.Activity); ok {
+						if ad, ok := asyncdata.Success(act.Data); ok {
+							ad := *ad
+							ad.ResetRecordIndex()
+						}
+					}
+				}
+			}
+		// reload data
+		case "alt+ctrl+r":
 			// ignore if an user typing a filter ...
 			if !m.list.SettingFilter() {
 				// reset activities
@@ -351,7 +375,7 @@ func (m Model) RightContentView() string {
 			var rows [][]string
 
 			if actPtr, ok := asyncdata.Success(act.Data); ok {
-				act := *actPtr // Dereference once for multiple usages
+				act := *actPtr
 				currentRecord := act.SelectedRecord()
 				noRecordsText := fmt.Sprintf(`%d`, act.NoRecords())
 				noSessionsText := fmt.Sprintf(`%d`, act.NoSessions)
