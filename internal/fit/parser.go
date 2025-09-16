@@ -221,7 +221,7 @@ func ParseFile(file string) (*common.ActivityData, error) {
 	// calculate pause
 	durationStats.Pause.Value = durationStats.Total.Value - durationStats.Active.Value
 
-	var activityData = common.ActivityData{
+	var activityData = &common.ActivityData{
 		Duration:      durationStats,
 		TotalDistance: totalDistance,
 		Temperature:   temperatureStats,
@@ -233,5 +233,5 @@ func ParseFile(file string) (*common.ActivityData, error) {
 		Altitude:      altitudeStats,
 	}
 
-	return &activityData, nil
+	return activityData, nil
 }

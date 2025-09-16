@@ -143,13 +143,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	if m.playLiveData {
 		item := m.list.SelectedItem()
-		selectedIndex := m.list.GlobalIndex()
 		if act, ok := item.(common.Activity); ok {
-			if ad, ok := asyncdata.Success(act.Data); ok {
+			if adPtr, ok := asyncdata.Success(act.Data); ok {
+				ad := *adPtr // Dereference to get *ActivityData
 				ad.CountRecordIndex()
-				act.Data = asyncdata.NewSuccess[error, common.ActivityData](*ad)
-				cmd := m.list.SetItem(selectedIndex, act)
-				cmds = append(cmds, cmd)
 			}
 		}
 	}
@@ -219,13 +216,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		for i, path := range msg {
 			activities[i] = common.Activity{
 				Path: path,
-				Data: asyncdata.NewNotAsked[error, common.ActivityData](),
+				Data: asyncdata.NewNotAsked[error, *common.ActivityData](),
 			}
 		}
 		m.activities = activities
 		// parse first Activity
 		firstAct := m.activities[0]
-		firstAct.Data = asyncdata.NewLoading[error, common.ActivityData](nil)
+		firstAct.Data = asyncdata.NewLoading[error, *common.ActivityData](nil)
 		cmds = append(cmds, parseFileCmd(firstAct))
 
 	case parseFileResultMsg:
@@ -242,7 +239,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if i < len(m.activities)-1 {
 			m.importIndex++
 			act := m.activities[m.importIndex]
-			act.Data = asyncdata.NewLoading[error, common.ActivityData](nil)
+			act.Data = asyncdata.NewLoading[error, *common.ActivityData](nil)
 			cmds = append(cmds, parseFileCmd(act))
 
 		}
@@ -353,7 +350,8 @@ func (m Model) RightContentView() string {
 
 			var rows [][]string
 
-			if act, ok := asyncdata.Success(act.Data); ok {
+			if actPtr, ok := asyncdata.Success(act.Data); ok {
+				act := *actPtr // Dereference once for multiple usages
 				currentRecord := act.SelectedRecord()
 				noRecordsText := fmt.Sprintf(`%d`, act.NoRecords())
 				noSessionsText := fmt.Sprintf(`%d`, act.NoSessions)
@@ -681,9 +679,9 @@ func parseFileCmd(act common.Activity) tea.Cmd {
 		go func() {
 			data, err := fit.ParseFile(act.Path)
 			if err != nil {
-				act.Data = asyncdata.NewFailure[error, common.ActivityData](err)
+				act.Data = asyncdata.NewFailure[error, *common.ActivityData](err)
 			} else {
-				act.Data = asyncdata.NewSuccess[error, common.ActivityData](*data)
+				act.Data = asyncdata.NewSuccess[error, *common.ActivityData](data)
 			}
 			// FIXME: for debugging only
 			// time.Sleep(50 * time.Millisecond)
