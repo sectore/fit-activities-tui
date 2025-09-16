@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"math"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/list"
@@ -88,17 +89,33 @@ func SortItems(items []list.Item, sort ActsSort) []list.Item {
 	return ActivitiesToListItems(acts)
 }
 
-func HorizontalStackedBar(value1 float32, value1Block string, value2 float32, value2Block string, maxBlocks int) string {
+func HorizontalStackedBar(value1 float64, value1Block string, value2 float64, value2Block string, maxBlocks int) string {
 	total := value1 + value2
-	value2Percent := value2 * float32(maxBlocks) / total
+	value2Percent := value2 * float64(maxBlocks) / total
 	// integer is needed to count blocks
 	noValue2Blocks := int(value2Percent)
-	// adjust to still show small `pauseValue`s < 1
+	// adjust `noValue2Blocks` to still show small values of `pauseValue` < 1
 	if noValue2Blocks == 0 && value2 > 0 {
 		noValue2Blocks = 1
 	}
-	// other blocks are blocks for `value1`
-	noValue1Blocks := maxBlocks - noValue2Blocks
-	return strings.Repeat(value1Block, noValue1Blocks) +
+	// adjust `noValue1Blocks` to never be < 0
+	noValue1Blocks := math.Max(float64(maxBlocks-noValue2Blocks), 0)
+	return strings.Repeat(value1Block, int(noValue1Blocks)) +
 		strings.Repeat(value2Block, noValue2Blocks)
+}
+
+func HorizontalBar(value float64, fgBlock string, maxValue float64, bgBlock string, maxBlocks int) string {
+	noValueBlocks := int(value * float64(maxBlocks) / maxValue)
+	// adjust to show a block asap
+	if noValueBlocks == 0 && value > 0 {
+		noValueBlocks = 1
+	}
+	// ensure noValueBlocks doesn't exceed maxBlocks
+	if noValueBlocks > maxBlocks {
+		noValueBlocks = maxBlocks
+	}
+	noBgBlocks := maxBlocks - noValueBlocks
+
+	return strings.Repeat(fgBlock, int(noValueBlocks)) +
+		strings.Repeat(bgBlock, noBgBlocks)
 }

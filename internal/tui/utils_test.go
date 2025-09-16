@@ -7,9 +7,9 @@ import (
 func TestHorizontalStackedBar(t *testing.T) {
 	tests := []struct {
 		name        string
-		value1      float32
+		value1      float64
 		value1Block string
-		value2      float32
+		value2      float64
 		value2Block string
 		maxBlocks   int
 		expected    string
@@ -64,6 +64,83 @@ func TestHorizontalStackedBar(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := HorizontalStackedBar(tt.value1, tt.value1Block, tt.value2, tt.value2Block, tt.maxBlocks)
+
+			if result != tt.expected {
+				t.Errorf("Expected:\n%s\nGot:\n%s", tt.expected, result)
+			}
+		})
+	}
+}
+
+func TestHorizontalBar(t *testing.T) {
+	tests := []struct {
+		name      string
+		value     float64
+		fgBlock   string
+		maxValue  float64
+		bgBlock   string
+		maxBlocks int
+		expected  string
+	}{
+		{
+			name:      "normal case 50%",
+			value:     50,
+			fgBlock:   "█",
+			maxValue:  100,
+			bgBlock:   "░",
+			maxBlocks: 10,
+			expected:  "█████░░░░░",
+		},
+		{
+			name:      "zero value",
+			value:     0,
+			fgBlock:   "█",
+			maxValue:  100,
+			bgBlock:   "░",
+			maxBlocks: 10,
+			expected:  "░░░░░░░░░░",
+		},
+		{
+			name:      "small positive value shows one block",
+			value:     0.1,
+			fgBlock:   "█",
+			maxValue:  100,
+			bgBlock:   "░",
+			maxBlocks: 10,
+			expected:  "█░░░░░░░░░",
+		},
+		{
+			name:      "full value",
+			value:     100,
+			fgBlock:   "█",
+			maxValue:  100,
+			bgBlock:   "░",
+			maxBlocks: 10,
+			expected:  "██████████",
+		},
+		{
+			name:      "value exceeds maxValue - should not panic",
+			value:     150,
+			fgBlock:   "█",
+			maxValue:  100,
+			bgBlock:   "░",
+			maxBlocks: 10,
+			expected:  "██████████",
+		},
+		{
+			name:      "very high value - should not panic",
+			value:     1000,
+			fgBlock:   "█",
+			maxValue:  100,
+			bgBlock:   "░",
+			maxBlocks: 20,
+			expected:  "████████████████████",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := HorizontalBar(tt.value, tt.fgBlock, tt.maxValue, tt.bgBlock, tt.maxBlocks)
 
 			if result != tt.expected {
 				t.Errorf("Expected:\n%s\nGot:\n%s", tt.expected, result)

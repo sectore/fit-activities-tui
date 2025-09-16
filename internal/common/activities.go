@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"sort"
 
-	"strings"
 	"time"
 
 	"github.com/sectore/fit-activities-tui/internal/asyncdata"
@@ -26,6 +25,10 @@ func (t Time) FormatDate() string {
 
 func (t Time) FormatHhMm() string {
 	return t.Value.Format("15:04")
+}
+
+func (t Time) FormatHhMmSs() string {
+	return t.Value.Format("15:04:05")
 }
 
 type Temperature struct{ Value float32 }
@@ -122,6 +125,24 @@ type ElevationStats struct {
 	Ascents  Elevation
 }
 
+type Altitude struct{ Value float64 }
+
+func NewAltitude(value float64) Altitude {
+	return Altitude{Value: value}
+}
+
+func (a Altitude) Format() string {
+	if a.Value == 0 {
+		return "0m"
+	}
+	return fmt.Sprintf("%.fm", a.Value)
+}
+
+type AltitudeStats struct {
+	Min Altitude
+	Max Altitude
+}
+
 type Distance struct{ Value uint32 }
 
 func NewDistance(value uint32) Distance {
@@ -132,9 +153,10 @@ func (d Distance) Format() string {
 	var meters = d.Value / 100
 	if meters >= 1000 {
 		km := float64(meters) / 1000
-		d := fmt.Sprintf("%.1f", km)
-		d = strings.TrimRight(d, "0")
-		d = strings.TrimRight(d, ".")
+		// d := fmt.Sprintf("%.1f", km)
+		// d = strings.TrimRight(d, "0")
+		// d = strings.TrimRight(d, ".")
+		d := fmt.Sprintf("%.2f", km)
 		return d + "km"
 	} else {
 		return fmt.Sprintf("%dm", meters)
@@ -146,19 +168,21 @@ type RecordData struct {
 	Distance    Distance
 	Speed       Speed
 	Temperature Temperature
-	Elevation   Elevation
 	GpsAccuracy GpsAccuracy
+	Altitude    Altitude
 }
 
 type ActivityData struct {
-	Duration      DurationStats
-	TotalDistance Distance
-	Speed         SpeedStats
-	Temperature   TemperatureStats
-	Elevation     ElevationStats
-	NoSessions    uint32
-	Records       []RecordData
-	GpsAccuracy   GpsAccuracyStats
+	Duration            DurationStats
+	TotalDistance       Distance
+	Speed               SpeedStats
+	Temperature         TemperatureStats
+	Elevation           ElevationStats
+	Altitude            AltitudeStats
+	NoSessions          uint32
+	Records             []RecordData
+	selectedRecordIndex int
+	GpsAccuracy         GpsAccuracyStats
 }
 
 func (ad ActivityData) NoRecords() int {
@@ -172,6 +196,24 @@ func (ad ActivityData) StartTime() Time {
 func (ad ActivityData) FinishTime() Time {
 	last := max(ad.NoRecords()-1, 0)
 	return ad.Records[last].Time
+}
+
+func (ad ActivityData) SelectedRecordIndex() int {
+	return ad.selectedRecordIndex
+}
+
+func (ad *ActivityData) CountRecordIndex() {
+	if ad.selectedRecordIndex < len(ad.Records)-1 {
+		ad.selectedRecordIndex += 1
+	}
+}
+
+func (ad ActivityData) ResetRecordIndex() {
+	ad.selectedRecordIndex = 0
+}
+
+func (ad ActivityData) SelectedRecord() RecordData {
+	return ad.Records[ad.selectedRecordIndex]
 }
 
 type ActivityAD = asyncdata.AsyncData[error, ActivityData]

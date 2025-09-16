@@ -2,6 +2,7 @@ package fit
 
 import (
 	"fmt"
+	"math"
 	"os"
 
 	"github.com/muktihari/fit/decoder"
@@ -65,13 +66,39 @@ func ParseFile(file string) (*common.ActivityData, error) {
 	var gpsSum, gpsCount uint
 
 	for _, r := range act.Records {
+
+		attitudeValue := r.AltitudeScaled()
+		if math.IsNaN(attitudeValue) || math.Float64bits(attitudeValue) == basetype.Float64Invalid {
+			attitudeValue = 0
+		}
+
+		temperature := r.Temperature
+		if temperature == basetype.Sint8Invalid {
+			temperature = 0
+		}
+
+		distance := r.Distance
+		if distance == basetype.Uint32Invalid {
+			distance = 0
+		}
+
+		speed := r.Speed
+		if speed == basetype.Uint16Invalid {
+			speed = 0
+		}
+
+		gpsAccuracy := r.GpsAccuracy
+		if gpsAccuracy == basetype.Uint8Invalid {
+			gpsAccuracy = 0
+		}
+
 		record := common.RecordData{
 			Time:        common.NewTime(r.Timestamp.Local()),
-			Distance:    common.NewDistance(r.Distance),
-			Speed:       common.NewSpeed(float32(r.Speed)),
-			Temperature: common.NewTemperature(float32(r.Temperature)),
-			Elevation:   common.NewElevation(r.Altitude),
-			GpsAccuracy: common.NewGpsAccuracy(float32(r.GpsAccuracy)),
+			Distance:    common.NewDistance(distance),
+			Speed:       common.NewSpeed(float32(speed)),
+			Temperature: common.NewTemperature(float32(temperature)),
+			Altitude:    common.NewAltitude(attitudeValue),
+			GpsAccuracy: common.NewGpsAccuracy(float32(gpsAccuracy)),
 		}
 		records = append(records, record)
 
@@ -153,6 +180,10 @@ func ParseFile(file string) (*common.ActivityData, error) {
 		Ascents:  common.NewElevation(0),
 		Descents: common.NewElevation(0),
 	}
+	altitudeStats := common.AltitudeStats{
+		Min: common.NewAltitude(0),
+		Max: common.NewAltitude(0),
+	}
 
 	for _, s := range act.Sessions {
 		totalDistance.Value += s.TotalDistance
@@ -176,6 +207,16 @@ func ParseFile(file string) (*common.ActivityData, error) {
 		if descentValue != basetype.Uint16Invalid {
 			elevationStats.Descents.Value += descentValue
 		}
+
+		minAltitudeValue := s.MinAltitudeScaled()
+		if !math.IsNaN(minAltitudeValue) {
+			altitudeStats.Min.Value = minAltitudeValue
+		}
+
+		maxAltitudeValue := s.MaxAltitudeScaled()
+		if !math.IsNaN(maxAltitudeValue) {
+			altitudeStats.Max.Value = maxAltitudeValue
+		}
 	}
 	// calculate pause
 	durationStats.Pause.Value = durationStats.Total.Value - durationStats.Active.Value
@@ -189,6 +230,7 @@ func ParseFile(file string) (*common.ActivityData, error) {
 		NoSessions:    uint32(noSessions),
 		Records:       records,
 		GpsAccuracy:   gpsAccuracyStats,
+		Altitude:      altitudeStats,
 	}
 
 	return &activityData, nil
