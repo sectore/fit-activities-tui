@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"math"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/list"
@@ -58,7 +59,7 @@ func ActivitiesTotalDuration(acts common.Activities) common.Duration {
 func ListItemsToActivities(items []list.Item) common.Activities {
 	var acts common.Activities
 	for _, item := range items {
-		if act, ok := item.(common.Activity); ok {
+		if act, ok := item.(*common.Activity); ok {
 			acts = append(acts, act)
 		}
 	}
@@ -88,17 +89,49 @@ func SortItems(items []list.Item, sort ActsSort) []list.Item {
 	return ActivitiesToListItems(acts)
 }
 
-func HorizontalStackedBar(value1 float32, value1Block string, value2 float32, value2Block string, maxBlocks int) string {
+func HorizontalStackedBar(value1 float64, value1Block string, value2 float64, value2Block string, maxBlocks int) string {
 	total := value1 + value2
-	value2Percent := value2 * float32(maxBlocks) / total
-	// integer is needed to count blocks
-	noValue2Blocks := int(value2Percent)
-	// adjust to still show small `pauseValue`s < 1
+	value2Percent := value2 * float64(maxBlocks) / total
+	// use rounding instead of truncation for better proportional representation
+	noValue2Blocks := int(math.Round(value2Percent))
+	// adjust `noValue2Blocks` to show small values of `pauseValue` < 1
 	if noValue2Blocks == 0 && value2 > 0 {
 		noValue2Blocks = 1
 	}
-	// other blocks are blocks for `value1`
-	noValue1Blocks := maxBlocks - noValue2Blocks
-	return strings.Repeat(value1Block, noValue1Blocks) +
+	// adjust `noValue1Blocks` to be never < 0
+	// to avoid negative `Repeat` count
+	noValue1Blocks := math.Max(float64(maxBlocks-noValue2Blocks), 0)
+	return strings.Repeat(value1Block, int(noValue1Blocks)) +
 		strings.Repeat(value2Block, noValue2Blocks)
+}
+
+func HorizontalBar(value float64, fgBlock string, maxValue float64, bgBlock string, maxBlocks int) string {
+	maxBlocks_f64 := float64(maxBlocks)
+	noValueBlocks := value * maxBlocks_f64 / maxValue
+	// ensure noValueBlocks doesn't exceed maxBlocks
+	if noValueBlocks > maxBlocks_f64 {
+		noValueBlocks = maxBlocks_f64
+	}
+
+	// avoid negative `Repeat` count
+	noValueBlocks = math.Max(float64(noValueBlocks), 0)
+	// re-adjust to show a block asap
+	if int(noValueBlocks) == 0 && value > 0 {
+		noValueBlocks = 1
+	}
+
+	// convert to integer for foreground blocks
+	fgBlocks := int(noValueBlocks)
+	// calculate background blocks to ensure total equals maxBlocks
+	bgBlocks := maxBlocks - fgBlocks
+
+	return strings.Repeat(fgBlock, fgBlocks) +
+		strings.Repeat(bgBlock, bgBlocks)
+}
+
+func TimeToDuration(start common.Time, end common.Time) common.Duration {
+	seconds := end.Value.Unix() - start.Value.Unix()
+	seconds = int64(math.Max(float64(seconds), 0))
+	milliseconds := uint32(seconds * 1000)
+	return common.NewDuration(milliseconds)
 }

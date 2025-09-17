@@ -3,8 +3,8 @@ package common
 import (
 	"fmt"
 	"sort"
-
 	"strings"
+
 	"time"
 
 	"github.com/sectore/fit-activities-tui/internal/asyncdata"
@@ -26,6 +26,10 @@ func (t Time) FormatDate() string {
 
 func (t Time) FormatHhMm() string {
 	return t.Value.Format("15:04")
+}
+
+func (t Time) FormatHhMmSs() string {
+	return t.Value.Format("15:04:05")
 }
 
 type Temperature struct{ Value float32 }
@@ -70,8 +74,10 @@ type SpeedStats struct {
 	Avg, Max Speed
 }
 
+// Duration in milliseconds
 type Duration struct{ Value uint32 }
 
+// Creates a new `Duration` expecting a value in milliseconds
 func NewDuration(value uint32) Duration {
 	return Duration{Value: value}
 }
@@ -122,6 +128,24 @@ type ElevationStats struct {
 	Ascents  Elevation
 }
 
+type Altitude struct{ Value float64 }
+
+func NewAltitude(value float64) Altitude {
+	return Altitude{Value: value}
+}
+
+func (a Altitude) Format() string {
+	if a.Value == 0 {
+		return "0m"
+	}
+	return fmt.Sprintf("%.fm", a.Value)
+}
+
+type AltitudeStats struct {
+	Min Altitude
+	Max Altitude
+}
+
 type Distance struct{ Value uint32 }
 
 func NewDistance(value uint32) Distance {
@@ -129,12 +153,35 @@ func NewDistance(value uint32) Distance {
 }
 
 func (d Distance) Format() string {
+	return d.format(1)
+}
+
+func (d Distance) Format2() string {
+	return d.format(2)
+}
+
+func (d Distance) Format3() string {
+	return d.format(3)
+}
+
+// Internal function to format `Duration` by given decimal numbers
+func (d Distance) format(decimal int) string {
 	var meters = d.Value / 100
 	if meters >= 1000 {
 		km := float64(meters) / 1000
-		d := fmt.Sprintf("%.1f", km)
-		d = strings.TrimRight(d, "0")
-		d = strings.TrimRight(d, ".")
+		var d string
+		switch decimal {
+		case 1:
+			d = fmt.Sprintf("%.1f", km)
+			d = strings.TrimRight(d, "0")
+			d = strings.TrimRight(d, ".")
+		case 2:
+			d = fmt.Sprintf("%.2f", km)
+		case 3:
+			d = fmt.Sprintf("%.3f", km)
+		default:
+			d = fmt.Sprintf("%d", int(km))
+		}
 		return d + "km"
 	} else {
 		return fmt.Sprintf("%dm", meters)
@@ -146,8 +193,8 @@ type RecordData struct {
 	Distance    Distance
 	Speed       Speed
 	Temperature Temperature
-	Elevation   Elevation
 	GpsAccuracy GpsAccuracy
+	Altitude    Altitude
 }
 
 type ActivityData struct {
@@ -156,6 +203,7 @@ type ActivityData struct {
 	Speed         SpeedStats
 	Temperature   TemperatureStats
 	Elevation     ElevationStats
+	Altitude      AltitudeStats
 	NoSessions    uint32
 	Records       []RecordData
 	GpsAccuracy   GpsAccuracyStats
@@ -178,13 +226,15 @@ type ActivityAD = asyncdata.AsyncData[error, ActivityData]
 
 type Activity struct {
 	Path string
-	Data ActivityAD
+	/// index of current selected `Record`
+	recordIndex int
+	Data        ActivityAD
 }
 
 func (act Activity) FilterValue() string {
 	var value string
 	if data, ok := asyncdata.Success(act.Data); ok {
-		value = data.StartTime().Format()
+		value = (*data).StartTime().Format()
 	}
 	return value
 
@@ -193,7 +243,7 @@ func (act Activity) FilterValue() string {
 func (act Activity) Title() string {
 	var title string
 	if data, ok := asyncdata.Success(act.Data); ok {
-		title = data.StartTime().Format()
+		title = (*data).StartTime().Format()
 	}
 	return title
 }
@@ -204,7 +254,7 @@ func (act Activity) Description() string {
 
 func (act Activity) TotalDistance() Distance {
 	if data, ok := asyncdata.Success(act.Data); ok {
-		return data.TotalDistance
+		return (*data).TotalDistance
 	}
 	return NewDistance(0)
 }
@@ -214,14 +264,14 @@ var defaultTime = time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC)
 
 func (act Activity) StartTime() Time {
 	if data, ok := asyncdata.Success(act.Data); ok {
-		return data.StartTime()
+		return (*data).StartTime()
 	}
 	return NewTime(defaultTime)
 }
 
 func (act Activity) FinishTime() Time {
 	if data, ok := asyncdata.Success(act.Data); ok {
-		return data.FinishTime()
+		return (*data).FinishTime()
 	}
 	return NewTime(defaultTime)
 }
@@ -229,12 +279,30 @@ func (act Activity) FinishTime() Time {
 func (act Activity) GetTotalDuration() Duration {
 	total := NewDuration(0)
 	if data, ok := asyncdata.Success(act.Data); ok {
-		total.Value += data.Duration.Total.Value
+		total.Value += (*data).Duration.Total.Value
 	}
 	return total
 }
 
-type Activities = []Activity
+func (act Activity) RecordIndex() int {
+	return act.recordIndex
+}
+
+func (act *Activity) CountRecordIndex() bool {
+	if data, ok := asyncdata.Success(act.Data); ok {
+		if act.recordIndex < len(data.Records)-1 {
+			act.recordIndex += 1
+			return true
+		}
+	}
+	return false
+}
+
+func (act *Activity) ResetRecordIndex() {
+	act.recordIndex = 0
+}
+
+type Activities = []*Activity // pointer slice to mutate values of `Activity`
 
 type SortBy func(act1, act2 *Activity) bool
 
@@ -268,7 +336,7 @@ func (s *actSorter) Swap(i, j int) {
 }
 
 func (s *actSorter) Less(i, j int) bool {
-	return s.by(&s.acts[i], &s.acts[j])
+	return s.by(s.acts[i], s.acts[j])
 }
 
 var SortByDistance = func(act1, act2 *Activity) bool {

@@ -26,16 +26,18 @@ const (
 )
 
 type Model struct {
-	importPath  string
-	importIndex int
-	activities  common.Activities
-	errMsgs     []error
-	spinner     spinner.Model
-	list        list.Model
-	width       int
-	height      int
-	showMenu    bool
-	actsSort    ActsSort
+	importPath   string
+	importIndex  int
+	activities   common.Activities
+	errMsgs      []error
+	spinner      spinner.Model
+	list         list.Model
+	width        int
+	height       int
+	showMenu     bool
+	actsSort     ActsSort
+	showLiveData bool
+	playLiveData bool
 }
 
 const (
@@ -101,15 +103,17 @@ func InitialModel(path string) Model {
 	list.SetShowStatusBar(false)
 
 	return Model{
-		importPath:  path,
-		importIndex: 0,
-		activities:  common.Activities{},
-		spinner:     s,
-		list:        list,
-		width:       0,
-		height:      0,
-		showMenu:    false,
-		actsSort:    TimeDesc,
+		importPath:   path,
+		importIndex:  0,
+		activities:   common.Activities{},
+		spinner:      s,
+		list:         list,
+		width:        0,
+		height:       0,
+		showMenu:     false,
+		actsSort:     TimeDesc,
+		showLiveData: false,
+		playLiveData: false,
 	}
 }
 
@@ -136,6 +140,13 @@ func (m *Model) sortActs() tea.Cmd {
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
+
+	if m.playLiveData {
+		item := m.list.SelectedItem()
+		if act, ok := item.(*common.Activity); ok {
+			_ = act.CountRecordIndex()
+		}
+	}
 	switch msg := msg.(type) {
 
 	case tea.WindowSizeMsg:
@@ -144,8 +155,26 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		log.Printf("key %s", msg.String())
 		switch msg.String() {
-		// reload data
+
 		case "r":
+			// reset `selectedRecordIndex` of SELECTED item
+			if !m.list.SettingFilter() {
+				item := m.list.SelectedItem()
+				if act, ok := item.(*common.Activity); ok {
+					act.ResetRecordIndex()
+				}
+			}
+		case "ctrl+r":
+			// reset `selectedRecordIndex` of ALL items
+			if !m.list.SettingFilter() {
+				for _, item := range m.list.Items() {
+					if act, ok := item.(*common.Activity); ok {
+						act.ResetRecordIndex()
+					}
+				}
+			}
+		// reload data
+		case "alt+ctrl+r":
 			// ignore if an user typing a filter ...
 			if !m.list.SettingFilter() {
 				// reset activities
@@ -163,6 +192,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "m":
 			if !m.list.SettingFilter() {
 				m.showMenu = !m.showMenu
+			}
+		case "l":
+			m.showLiveData = !m.showLiveData
+		case " ":
+			if m.showLiveData {
+				m.playLiveData = !m.playLiveData
 			}
 		case "ctrl+d":
 			if !ActivitiesParsing(m.activities) {
@@ -192,9 +227,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case getFilesResultMsg:
 		// list of `NotAsked` activities
-		activities := make([]common.Activity, len(msg))
+		activities := make([]*common.Activity, len(msg))
 		for i, path := range msg {
-			activities[i] = common.Activity{
+			activities[i] = &common.Activity{
 				Path: path,
 				Data: asyncdata.NewNotAsked[error, common.ActivityData](),
 			}
@@ -207,9 +242,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case parseFileResultMsg:
 		i := m.importIndex
-		m.activities[i] = msg.Activity
+		*m.activities[i] = *msg.Activity
 		// add new item to current items
-		items := append(m.list.Items(), msg.Activity)
+		items := append(m.list.Items(), m.activities[i])
 		// sort list
 		items = SortItems(items, m.actsSort)
 		// set sorted items to list
@@ -290,108 +325,193 @@ func (m Model) RightContentView() string {
 	var detailsView string
 	item := m.list.SelectedItem()
 	if item != nil && !m.list.SettingFilter() {
+
+		label := lipgloss.NewStyle().
+			Bold(true).Render(fmt.Sprintf(`#%d activity`, m.list.Index()+1))
+
+		var extraLabel string
+		if m.showLiveData {
+			extraLabel = lipgloss.NewStyle().
+				PaddingLeft(1).PaddingRight(1).
+				Bold(true).
+				Reverse(true).
+				Render("live")
+		}
+
 		detailsView += lipgloss.NewStyle().
 			Bold(true).
 			PaddingRight(4).
 			Border(lipgloss.ASCIIBorder(), false, false, true, false).
-			MarginBottom(1).
-			Render(fmt.Sprintf(`#%d activity`, m.list.Index()+1))
+			Render(label + " " + extraLabel)
 
-		rows := [][]string{
-			{"date", "..."},
-			{"distance", "..."},
-			{"time", "..."},
-			{"", "..."},
-			{"", "..."},
-			{"speed", "..."},
-			{"", "..."},
-			{"elevation", "..."},
-			{"", "..."},
-			{"temperature", "..."},
-			{"", "..."},
-			{"gps accuracy", "..."},
-			{"", "..."},
-			{"sessions", "..."},
-			{"records", "..."},
+		var playLabel string
+		if m.showLiveData {
+			playLabel = "paused"
+			if m.playLiveData {
+				playLabel = "playing"
+			}
 		}
+
+		detailsView += br
+		detailsView += lipgloss.NewStyle().Italic(true).MarginBottom(1).Render(playLabel)
+
 		const BAR_WIDTH = 50
 		var col1 = lipgloss.NewStyle().Width(BAR_WIDTH / 2).Render
 		var col2 = lipgloss.NewStyle().Width(BAR_WIDTH / 2).Align(lipgloss.Right).Render
-		if act, ok := item.(common.Activity); ok {
-			if act, ok := asyncdata.Success(act.Data); ok {
-				// date
-				rows[0][1] = lipgloss.NewStyle().PaddingRight(4).Render(act.StartTime().FormatDate()) +
-					act.StartTime().FormatHhMm() +
-					"-" +
-					act.FinishTime().FormatHhMm()
-				// distance
-				rows[1][1] = act.TotalDistance.Format()
-				// time text
-				rows[2][1] = "total " + act.Duration.Total.Format()
-				rows[3][1] = col1("active " + act.Duration.Active.Format() + " ")
-				if act.Duration.Pause.Value > 0 {
-					rows[3][1] += col2("pause " + act.Duration.Pause.Format())
+
+		if act, ok := item.(*common.Activity); ok {
+
+			totalDistance := act.TotalDistance().Format()
+
+			var rows [][]string
+			if ad, ok := asyncdata.Success(act.Data); ok {
+
+				currentRecord := ad.Records[act.RecordIndex()]
+
+				noRecordsText := fmt.Sprintf(`%d`, ad.NoRecords())
+				noSessionsText := fmt.Sprintf(`%d`, ad.NoSessions)
+
+				dateTxt := ad.StartTime().Format() + "-" + ad.FinishTime().FormatHhMm()
+
+				b1 := BarEmptyHalf
+				b2 := BarEmpty
+
+				if m.showLiveData {
+					distanceTxt := col1(currentRecord.Distance.Format3()) +
+						col2(ad.TotalDistance.Format3())
+					distanceBar := HorizontalBar(
+						float64(currentRecord.Distance.Value),
+						b1,
+						float64(ad.TotalDistance.Value),
+						b2,
+						BAR_WIDTH)
+					currentDuration := TimeToDuration(ad.StartTime(), currentRecord.Time)
+					finalDuration := TimeToDuration(ad.StartTime(), ad.FinishTime())
+					durationTxt := col1(currentDuration.Format()) +
+						col2(finalDuration.Format())
+					timeBar := HorizontalBar(
+						float64(currentDuration.Value),
+						b1,
+						float64(finalDuration.Value),
+						b2,
+						BAR_WIDTH)
+					speedTxt := col1(currentRecord.Speed.Format()) +
+						col2(ad.Speed.Max.Format())
+					speedBar := HorizontalBar(
+						float64(currentRecord.Speed.Value),
+						b1,
+						float64(ad.Speed.Max.Value),
+						b2,
+						BAR_WIDTH)
+					altitudeTxt := col1(currentRecord.Altitude.Format()) +
+						col2(ad.Altitude.Max.Format())
+
+					altitudeBar := HorizontalBar(
+						float64(currentRecord.Altitude.Value),
+						b1,
+						float64(ad.Altitude.Max.Value),
+						b2,
+						BAR_WIDTH)
+
+					temperatureTxt := col1(currentRecord.Temperature.Format()) +
+						col2(ad.Temperature.Max.Format())
+					temperatureBar := HorizontalBar(
+						float64(currentRecord.Temperature.Value),
+						b1,
+						float64(ad.Temperature.Max.Value),
+						b2,
+						BAR_WIDTH)
+					gpsTxt := col1(currentRecord.GpsAccuracy.Format()) +
+						col2(ad.GpsAccuracy.Max.Format())
+					gpsBar := HorizontalBar(
+						float64(currentRecord.GpsAccuracy.Value),
+						b1,
+						float64(ad.GpsAccuracy.Max.Value),
+						b2,
+						BAR_WIDTH)
+
+					rows = [][]string{
+						{"date", dateTxt},
+						{"distance", distanceTxt},
+						{"", distanceBar},
+						{"duration", durationTxt},
+						{"", timeBar},
+						{"speed", speedTxt},
+						{"", speedBar},
+						{"altitude", altitudeTxt},
+						{"", altitudeBar},
+						{"temperature", temperatureTxt},
+						{"", temperatureBar},
+						{"gps accuracy", gpsTxt},
+						{"", gpsBar},
+						{"sessions", noSessionsText},
+						{"record", fmt.Sprint(act.RecordIndex()+1) + " of " + noRecordsText},
+					}
+				} else {
+
+					durationTxt := col1(ad.Duration.Active.Format())
+					pauseTxt := "pause " + ad.Duration.Pause.Format()
+					if ad.Duration.Pause.Value <= 0 {
+						pauseTxt = "(no pause)"
+					}
+					durationTxt += col2(pauseTxt)
+					durationBar := HorizontalStackedBar(
+						float64(ad.Duration.Active.Value),
+						b1,
+						float64(ad.Duration.Pause.Value),
+						b2,
+						BAR_WIDTH)
+					speedTxt := col1("⌀ "+ad.Speed.Avg.Format()) +
+						col2("max "+ad.Speed.Max.Format())
+					speedBar := HorizontalBar(
+						float64(ad.Speed.Avg.Value),
+						b1,
+						float64(ad.Speed.Max.Value),
+						b2,
+						BAR_WIDTH)
+					elevationTxt := col1(arrowTop+" "+ad.Elevation.Ascents.Format()) +
+						col2(arrowDown+" "+ad.Elevation.Descents.Format())
+					elevationBar := HorizontalStackedBar(
+						float64(ad.Elevation.Ascents.Value),
+						b1,
+						float64(ad.Elevation.Descents.Value),
+						b2,
+						BAR_WIDTH)
+					temperatureTxt := col1("⌀ "+ad.Temperature.Avg.Format()) +
+						col2("max "+ad.Temperature.Max.Format())
+					temperatureBar := HorizontalBar(
+						float64(ad.Temperature.Avg.Value),
+						b1,
+						float64(ad.Temperature.Max.Value),
+						b2,
+						BAR_WIDTH)
+					gpsTxt := col1("⌀ "+ad.GpsAccuracy.Avg.Format()) +
+						col2("max "+ad.GpsAccuracy.Max.Format())
+					gpsBar := HorizontalBar(
+						float64(ad.GpsAccuracy.Avg.Value),
+						b1,
+						float64(ad.GpsAccuracy.Max.Value),
+						b2,
+						BAR_WIDTH)
+
+					rows = [][]string{
+						{"date", dateTxt},
+						{"distance", totalDistance},
+						{"active", durationTxt},
+						{"", durationBar},
+						{"speed", speedTxt},
+						{"", speedBar},
+						{"elevation", elevationTxt},
+						{"", elevationBar},
+						{"temperature", temperatureTxt},
+						{"", temperatureBar},
+						{"gps accuracy", gpsTxt},
+						{"", gpsBar},
+						{"sessions", noSessionsText},
+						{"records", noRecordsText},
+					}
 				}
 
-				// time stacked bar (active/pause)
-				rows[4][1] = HorizontalStackedBar(
-					float32(act.Duration.Active.Value),
-					BarEmptyHalf,
-					float32(act.Duration.Pause.Value),
-					BarEmpty,
-					BAR_WIDTH)
-
-				// speed
-				rows[5][1] = col1("⌀ "+act.Speed.Avg.Format()) +
-					col2("max "+act.Speed.Max.Format())
-
-				// speed stacked bar (avg/max)
-				rows[6][1] = HorizontalStackedBar(
-					act.Speed.Avg.Value,
-					BarEmptyHalf,
-					act.Speed.Max.Value,
-					BarEmpty,
-					BAR_WIDTH)
-
-				// elevation
-				rows[7][1] = col1(arrowTop+" "+act.Elevation.Ascents.Format()) +
-					col2(arrowDown+" "+act.Elevation.Descents.Format())
-
-				// elevation stacked bar (ascents/descents)
-				rows[8][1] = HorizontalStackedBar(
-					float32(act.Elevation.Ascents.Value),
-					BarEmptyHalf,
-					float32(act.Elevation.Descents.Value),
-					BarEmpty,
-					BAR_WIDTH)
-
-				// temperature
-				rows[9][1] = col1("⌀ "+act.Temperature.Avg.Format()) +
-					col2("max "+act.Temperature.Max.Format())
-				// temperature stacked bar (avg/max)
-				rows[10][1] = HorizontalStackedBar(
-					float32(act.Temperature.Avg.Value),
-					BarEmptyHalf,
-					float32(act.Temperature.Max.Value),
-					BarEmpty,
-					BAR_WIDTH)
-
-				// gps
-				rows[11][1] = col1("⌀ "+act.GpsAccuracy.Avg.Format()) +
-					col2("max "+act.GpsAccuracy.Max.Format())
-
-				// gps stacked bar (avg/max)
-				rows[12][1] = HorizontalStackedBar(
-					float32(act.GpsAccuracy.Avg.Value),
-					BarEmptyHalf,
-					float32(act.GpsAccuracy.Max.Value),
-					BarEmpty,
-					BAR_WIDTH)
-
-				// no. sessions
-				rows[13][1] = fmt.Sprintf(`%d`, act.NoSessions)
-				// no. records
-				rows[14][1] = fmt.Sprintf(`%d`, act.NoRecords())
 			}
 			rows = append(rows,
 				[]string{"file", filepath.Base(act.Path)},
@@ -402,8 +522,10 @@ func (m Model) RightContentView() string {
 				StyleFunc(func(row, col int) lipgloss.Style {
 					switch {
 					case col == 0:
-						return lipgloss.NewStyle().PaddingRight(2).Bold(true)
-					case row == 1 || row == 12:
+						return lipgloss.NewStyle().Bold(true).PaddingRight(2)
+					case !m.showLiveData && (row == 1 || row == 11):
+						return lipgloss.NewStyle().MarginBottom(2)
+					case m.showLiveData && (row == 2 || row == 12):
 						return lipgloss.NewStyle().MarginBottom(2)
 					default:
 						return lipgloss.NewStyle().PaddingRight(1)
@@ -495,11 +617,35 @@ func (m Model) footerView() string {
 				filterCol3 = "[ESC]skip"
 			}
 		}
+
+		col := lipgloss.NewStyle().PaddingRight(3).Render
+		actionsTxt := col("[l]show live data")
+		if m.showLiveData {
+			actionsTxt = col("[l]hide live data")
+			if m.playLiveData {
+				actionsTxt += col("[space]stop")
+			} else {
+				actionsTxt += col("[space]play")
+			}
+			actionsTxt += col("[r]eset record count")
+			actionsTxt += col("[^r]eset record counts")
+		}
+		actionsTxt += col("[q]uit")
+
+		sortTxt := col("[^t]ime") + col("[^d]uration")
+
+		listTxt := col("["+arrowTop+"]up") +
+			col("["+arrowDown+"]down") +
+			col("[g]first", "[G]last") +
+			col("[←/→]switch pages")
+
+		filterTxt := col(filterCol2) + col(filterCol3)
+
 		rows := [][]string{
-			{"actions", "[r]eload", "[q]uit"},
-			{"list", "[" + arrowTop + "]up", "[" + arrowDown + "]down", "[g]first", "[G]last", "[←/→]switch pages"},
-			{"sort", "[^t]ime", "[^d]uration"},
-			{"filter", filterCol2, filterCol3},
+			{"actions", actionsTxt},
+			{"list", listTxt},
+			{"sort", sortTxt},
+			{"filter", filterTxt},
 		}
 		table := table.New().
 			Rows(rows...).
@@ -539,7 +685,7 @@ func (m Model) View() string {
 
 type (
 	getFilesResultMsg  []string
-	parseFileResultMsg struct{ common.Activity }
+	parseFileResultMsg struct{ *common.Activity }
 	errMsg             struct{ err error }
 )
 
@@ -556,7 +702,7 @@ func getFilesCmd(path string) tea.Cmd {
 	}
 }
 
-func parseFileCmd(act common.Activity) tea.Cmd {
+func parseFileCmd(act *common.Activity) tea.Cmd {
 	return func() tea.Msg {
 		// channel to send result msg
 		resultCh := make(chan tea.Msg, 1)
@@ -568,8 +714,6 @@ func parseFileCmd(act common.Activity) tea.Cmd {
 			} else {
 				act.Data = asyncdata.NewSuccess[error, common.ActivityData](*data)
 			}
-			// FIXME: for debugging only
-			// time.Sleep(50 * time.Millisecond)
 			resultCh <- parseFileResultMsg{act}
 			close(resultCh)
 		}()

@@ -44,6 +44,22 @@ Flags:
 | --- | --- |
 | <kbd>m</kbd> | Toggle menu |
 
+## Actions
+
+| Key | Description |
+| --- | --- |
+| <kbd>l</kbd> | toggle live data |
+| <kbd>ctrl+alt+r</kbd> | re-import file(s) |
+| <kbd>q</kbd> | quit |
+
+In `live data` view
+
+| Key | Description |
+| --- | --- |
+| <kbd>SPACE</kbd> | toggle play / pause |
+| <kbd>r</kbd> | reset current record count |
+| <kbd>ctrl+r</kbd> | reset all record counts |
+
 ## List
 
 | Key | Description |
@@ -66,16 +82,9 @@ Flags:
 
 | Key | Description |
 | --- | --- |
-| <kbd>^d</kbd> | sort by distance |
-| <kbd>^t</kbd> | sort by start time |
+| <kbd>ctrl+d</kbd> | sort by distance |
+| <kbd>ctrl+t</kbd> | sort by start time |
 
-
-## Actions
-
-| Key | Description |
-| --- | --- |
-| <kbd>r</kbd> | re-import file(s) |
-| <kbd>q</kbd> | quit |
 
 # Installation
 
