@@ -625,11 +625,35 @@ func (m Model) footerView() string {
 				filterCol3 = "[ESC]skip"
 			}
 		}
+
+		col := lipgloss.NewStyle().PaddingRight(3).Render
+		actionsTxt := col("[l]show live data")
+		if m.showLiveData {
+			actionsTxt = col("[l]hide live data")
+			if m.playLiveData {
+				actionsTxt += col("[space]stop")
+			} else {
+				actionsTxt += col("[space]play")
+			}
+			actionsTxt += col("[r]eset record count")
+			actionsTxt += col("[^r]eset record counts")
+		}
+		actionsTxt += col("[q]uit")
+
+		sortTxt := col("[^t]ime") + col("[^d]uration")
+
+		listTxt := col("["+arrowTop+"]up") +
+			col("["+arrowDown+"]down") +
+			col("[g]first", "[G]last") +
+			col("[←/→]switch pages")
+
+		filterTxt := col(filterCol2) + col(filterCol3)
+
 		rows := [][]string{
-			{"actions", "[r]eload", "[q]uit"},
-			{"list", "[" + arrowTop + "]up", "[" + arrowDown + "]down", "[g]first", "[G]last", "[←/→]switch pages"},
-			{"sort", "[^t]ime", "[^d]uration"},
-			{"filter", filterCol2, filterCol3},
+			{"actions", actionsTxt},
+			{"list", listTxt},
+			{"sort", sortTxt},
+			{"filter", filterTxt},
 		}
 		table := table.New().
 			Rows(rows...).
