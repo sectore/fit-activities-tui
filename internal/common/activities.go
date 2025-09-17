@@ -73,8 +73,10 @@ type SpeedStats struct {
 	Avg, Max Speed
 }
 
+// Duration in milliseconds
 type Duration struct{ Value uint32 }
 
+// Creates a new `Duration` by passing a value in milliseconds
 func NewDuration(value uint32) Duration {
 	return Duration{Value: value}
 }

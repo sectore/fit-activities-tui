@@ -371,18 +371,12 @@ func (m Model) RightContentView() string {
 				noRecordsText := fmt.Sprintf(`%d`, ad.NoRecords())
 				noSessionsText := fmt.Sprintf(`%d`, ad.NoSessions)
 
-				b1 := BarEmptyHalf
-				// b1 := "⣿"
-				// b1 := "⠛"
-				// b1 := "⠿"
+				dateTxt := ad.StartTime().Format() + "-" + ad.FinishTime().FormatHhMm()
 
+				b1 := BarEmptyHalf
 				b2 := BarEmpty
-				// b2 := "⣀"
-				// b2 := "⠉"
-				// b2 := "⠒"
 
 				if m.showLiveData {
-					dateTxt := currentRecord.Time.FormatDate()
 					distanceTxt := col1(currentRecord.Distance.Format()) +
 						col2(ad.TotalDistance.Format())
 					distanceBar := HorizontalBar(
@@ -391,12 +385,14 @@ func (m Model) RightContentView() string {
 						float64(ad.TotalDistance.Value),
 						b2,
 						BAR_WIDTH)
-					timeTxt := col1(currentRecord.Time.FormatHhMmSs()) +
-						col2(ad.FinishTime().FormatHhMmSs())
+					currentDuration := TimeToDuration(ad.StartTime(), currentRecord.Time)
+					finalDuration := TimeToDuration(ad.StartTime(), ad.FinishTime())
+					durationTxt := col1(currentDuration.Format()) +
+						col2(finalDuration.Format())
 					timeBar := HorizontalBar(
-						float64(currentRecord.Time.Value.Unix()-ad.StartTime().Value.Unix()),
+						float64(currentDuration.Value),
 						b1,
-						float64(ad.FinishTime().Value.Unix()-ad.StartTime().Value.Unix()),
+						float64(finalDuration.Value),
 						b2,
 						BAR_WIDTH)
 					speedTxt := col1(currentRecord.Speed.Format()) +
@@ -437,10 +433,10 @@ func (m Model) RightContentView() string {
 
 					rows = [][]string{
 						{"date", dateTxt},
-						{"time", timeTxt},
-						{"", timeBar},
 						{"distance", distanceTxt},
 						{"", distanceBar},
+						{"duration", durationTxt},
+						{"", timeBar},
 						{"speed", speedTxt},
 						{"", speedBar},
 						{"altitude", altitudeTxt},
@@ -453,11 +449,7 @@ func (m Model) RightContentView() string {
 						{"record", fmt.Sprint(act.RecordIndex()+1) + " of " + noRecordsText},
 					}
 				} else {
-					dateTxt := lipgloss.NewStyle().PaddingRight(4).Render(ad.StartTime().FormatDate())
-					startFinishTxt := ad.StartTime().FormatHhMm() + " - " +
-						ad.FinishTime().FormatHhMm()
 
-					// durationTotalTxt := col1("total " + act.Duration.Total.Format())
 					durationTxt := col1(ad.Duration.Active.Format())
 					if ad.Duration.Pause.Value > 0 {
 						durationTxt += col2("pause " + ad.Duration.Pause.Format())
@@ -503,7 +495,6 @@ func (m Model) RightContentView() string {
 
 					rows = [][]string{
 						{"date", dateTxt},
-						{"time", startFinishTxt},
 						{"distance", totalDistance},
 						{"active", durationTxt},
 						{"", durationBar},
@@ -531,9 +522,9 @@ func (m Model) RightContentView() string {
 					switch {
 					case col == 0:
 						return lipgloss.NewStyle().Bold(true).PaddingRight(2)
-					case !m.showLiveData && (row == 2 || row == 12):
+					case !m.showLiveData && (row == 1 || row == 11):
 						return lipgloss.NewStyle().MarginBottom(2)
-					case m.showLiveData && (row == 4 || row == 12):
+					case m.showLiveData && (row == 2 || row == 12):
 						return lipgloss.NewStyle().MarginBottom(2)
 					default:
 						return lipgloss.NewStyle().PaddingRight(1)

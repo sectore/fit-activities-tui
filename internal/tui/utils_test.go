@@ -2,6 +2,9 @@ package tui
 
 import (
 	"testing"
+	"time"
+
+	"github.com/sectore/fit-activities-tui/internal/common"
 )
 
 func TestHorizontalStackedBar(t *testing.T) {
@@ -67,6 +70,83 @@ func TestHorizontalStackedBar(t *testing.T) {
 
 			if result != tt.expected {
 				t.Errorf("Expected:\n%s\nGot:\n%s", tt.expected, result)
+			}
+		})
+	}
+}
+
+func TestTimeToDuration(t *testing.T) {
+	tests := []struct {
+		name     string
+		start    time.Time
+		end      time.Time
+		expected string
+	}{
+		{
+			name:     "5 seconds",
+			start:    time.Date(2024, 1, 1, 10, 0, 0, 0, time.UTC),
+			end:      time.Date(2024, 1, 1, 10, 0, 5, 0, time.UTC),
+			expected: "5s",
+		},
+		{
+			name:     "30 seconds",
+			start:    time.Date(2024, 1, 1, 10, 0, 0, 0, time.UTC),
+			end:      time.Date(2024, 1, 1, 10, 0, 30, 0, time.UTC),
+			expected: "30s",
+		},
+		{
+			name:     "2 minutes 15 seconds",
+			start:    time.Date(2024, 1, 1, 10, 0, 0, 0, time.UTC),
+			end:      time.Date(2024, 1, 1, 10, 2, 15, 0, time.UTC),
+			expected: "2m 15s",
+		},
+		{
+			name:     "1 hour 30 minutes 45 seconds",
+			start:    time.Date(2024, 1, 1, 10, 0, 0, 0, time.UTC),
+			end:      time.Date(2024, 1, 1, 11, 30, 45, 0, time.UTC),
+			expected: "1h 30m 45s",
+		},
+		{
+			name:     "5 hours 0 minutes 0 seconds",
+			start:    time.Date(2024, 1, 1, 10, 0, 0, 0, time.UTC),
+			end:      time.Date(2024, 1, 1, 15, 0, 0, 0, time.UTC),
+			expected: "5h 0m 0s",
+		},
+		{
+			name:     "2 days 5 hours 30 minutes 15 seconds",
+			start:    time.Date(2024, 1, 1, 10, 0, 0, 0, time.UTC),
+			end:      time.Date(2024, 1, 3, 15, 30, 15, 0, time.UTC),
+			expected: "2d 5h 30m 15s",
+		},
+		{
+			name:     "3 days 0 hours 0 minutes 0 seconds",
+			start:    time.Date(2024, 1, 1, 12, 0, 0, 0, time.UTC),
+			end:      time.Date(2024, 1, 4, 12, 0, 0, 0, time.UTC),
+			expected: "3d 0h 0m 0s",
+		},
+		{
+			name:     "zero duration (same time)",
+			start:    time.Date(2024, 1, 1, 10, 0, 0, 0, time.UTC),
+			end:      time.Date(2024, 1, 1, 10, 0, 0, 0, time.UTC),
+			expected: "0s",
+		},
+		{
+			name:     "start after end (negative duration should be zero)",
+			start:    time.Date(2024, 1, 1, 15, 30, 0, 0, time.UTC),
+			end:      time.Date(2024, 1, 1, 10, 0, 0, 0, time.UTC),
+			expected: "0s",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			startTime := common.NewTime(tt.start)
+			endTime := common.NewTime(tt.end)
+
+			result := TimeToDuration(startTime, endTime)
+
+			if result.Format() != tt.expected {
+				t.Errorf("Expected: %s, Got: %s", tt.expected, result.Format())
 			}
 		})
 	}
