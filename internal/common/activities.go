@@ -3,6 +3,7 @@ package common
 import (
 	"fmt"
 	"sort"
+	"strings"
 
 	"time"
 
@@ -76,7 +77,7 @@ type SpeedStats struct {
 // Duration in milliseconds
 type Duration struct{ Value uint32 }
 
-// Creates a new `Duration` by passing a value in milliseconds
+// Creates a new `Duration` expecting a value in milliseconds
 func NewDuration(value uint32) Duration {
 	return Duration{Value: value}
 }
@@ -152,13 +153,35 @@ func NewDistance(value uint32) Distance {
 }
 
 func (d Distance) Format() string {
+	return d.format(1)
+}
+
+func (d Distance) Format2() string {
+	return d.format(2)
+}
+
+func (d Distance) Format3() string {
+	return d.format(3)
+}
+
+// Internal function to format `Duration` by given decimal numbers
+func (d Distance) format(decimal int) string {
 	var meters = d.Value / 100
 	if meters >= 1000 {
 		km := float64(meters) / 1000
-		// d := fmt.Sprintf("%.1f", km)
-		// d = strings.TrimRight(d, "0")
-		// d = strings.TrimRight(d, ".")
-		d := fmt.Sprintf("%.2f", km)
+		var d string
+		switch decimal {
+		case 1:
+			d = fmt.Sprintf("%.1f", km)
+			d = strings.TrimRight(d, "0")
+			d = strings.TrimRight(d, ".")
+		case 2:
+			d = fmt.Sprintf("%.2f", km)
+		case 3:
+			d = fmt.Sprintf("%.3f", km)
+		default:
+			d = fmt.Sprintf("%d", int(km))
+		}
 		return d + "km"
 	} else {
 		return fmt.Sprintf("%dm", meters)
@@ -265,12 +288,14 @@ func (act Activity) RecordIndex() int {
 	return act.recordIndex
 }
 
-func (act *Activity) CountRecordIndex() {
+func (act *Activity) CountRecordIndex() bool {
 	if data, ok := asyncdata.Success(act.Data); ok {
 		if act.recordIndex < len(data.Records)-1 {
 			act.recordIndex += 1
+			return true
 		}
 	}
+	return false
 }
 
 func (act *Activity) ResetRecordIndex() {

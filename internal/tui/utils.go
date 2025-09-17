@@ -94,11 +94,11 @@ func HorizontalStackedBar(value1 float64, value1Block string, value2 float64, va
 	value2Percent := value2 * float64(maxBlocks) / total
 	// use rounding instead of truncation for better proportional representation
 	noValue2Blocks := int(math.Round(value2Percent))
-	// adjust `noValue2Blocks` to still show small values of `pauseValue` < 1
+	// adjust `noValue2Blocks` to show small values of `pauseValue` < 1
 	if noValue2Blocks == 0 && value2 > 0 {
 		noValue2Blocks = 1
 	}
-	// adjust `noValue1Blocks` to never be < 0
+	// adjust `noValue1Blocks` to be never < 0
 	// to avoid negative `Repeat` count
 	noValue1Blocks := math.Max(float64(maxBlocks-noValue2Blocks), 0)
 	return strings.Repeat(value1Block, int(noValue1Blocks)) +

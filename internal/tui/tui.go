@@ -144,7 +144,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if m.playLiveData {
 		item := m.list.SelectedItem()
 		if act, ok := item.(*common.Activity); ok {
-			act.CountRecordIndex()
+			_ = act.CountRecordIndex()
 		}
 	}
 	switch msg := msg.(type) {
@@ -377,8 +377,8 @@ func (m Model) RightContentView() string {
 				b2 := BarEmpty
 
 				if m.showLiveData {
-					distanceTxt := col1(currentRecord.Distance.Format()) +
-						col2(ad.TotalDistance.Format())
+					distanceTxt := col1(currentRecord.Distance.Format3()) +
+						col2(ad.TotalDistance.Format3())
 					distanceBar := HorizontalBar(
 						float64(currentRecord.Distance.Value),
 						b1,
@@ -402,7 +402,6 @@ func (m Model) RightContentView() string {
 						b1,
 						float64(ad.Speed.Max.Value),
 						b2,
-						// "⠉",
 						BAR_WIDTH)
 					altitudeTxt := col1(currentRecord.Altitude.Format()) +
 						col2(ad.Altitude.Max.Format())
@@ -451,9 +450,11 @@ func (m Model) RightContentView() string {
 				} else {
 
 					durationTxt := col1(ad.Duration.Active.Format())
-					if ad.Duration.Pause.Value > 0 {
-						durationTxt += col2("pause " + ad.Duration.Pause.Format())
+					pauseTxt := "pause " + ad.Duration.Pause.Format()
+					if ad.Duration.Pause.Value <= 0 {
+						pauseTxt = "(no pause)"
 					}
+					durationTxt += col2(pauseTxt)
 					durationBar := HorizontalStackedBar(
 						float64(ad.Duration.Active.Value),
 						b1,

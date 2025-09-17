@@ -209,12 +209,12 @@ func ParseFile(file string) (*common.ActivityData, error) {
 		}
 
 		minAltitudeValue := s.MinAltitudeScaled()
-		if !math.IsNaN(minAltitudeValue) {
+		if !math.IsNaN(minAltitudeValue) && math.Float64bits(minAltitudeValue) != basetype.Float64Invalid {
 			altitudeStats.Min.Value = minAltitudeValue
 		}
 
 		maxAltitudeValue := s.MaxAltitudeScaled()
-		if !math.IsNaN(maxAltitudeValue) {
+		if !math.IsNaN(maxAltitudeValue) && math.Float64bits(minAltitudeValue) != basetype.Float64Invalid {
 			altitudeStats.Max.Value = maxAltitudeValue
 		}
 	}
