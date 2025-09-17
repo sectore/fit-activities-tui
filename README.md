@@ -49,16 +49,16 @@ Flags:
 | Key | Description |
 | --- | --- |
 | <kbd>l</kbd> | toggle live data |
-| <kbd>alt+strg+r</kbd> | re-import file(s) |
+| <kbd>ctrl+alt+r</kbd> | re-import file(s) |
 | <kbd>q</kbd> | quit |
 
 In `live data` view
 
 | Key | Description |
 | --- | --- |
-| <kbd>Space</kbd> | toggle play / pause |
+| <kbd>SPACE</kbd> | toggle play / pause |
 | <kbd>r</kbd> | reset current record count |
-| <kbd>r</kbd> | reset all record counts |
+| <kbd>ctrl+r</kbd> | reset all record counts |
 
 ## List
 
