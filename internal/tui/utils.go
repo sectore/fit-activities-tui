@@ -99,23 +99,28 @@ func HorizontalStackedBar(value1 float64, value1Block string, value2 float64, va
 		noValue2Blocks = 1
 	}
 	// adjust `noValue1Blocks` to never be < 0
+	// to avoid negative `Repeat` count
 	noValue1Blocks := math.Max(float64(maxBlocks-noValue2Blocks), 0)
 	return strings.Repeat(value1Block, int(noValue1Blocks)) +
 		strings.Repeat(value2Block, noValue2Blocks)
 }
 
 func HorizontalBar(value float64, fgBlock string, maxValue float64, bgBlock string, maxBlocks int) string {
-	noValueBlocks := int(value * float64(maxBlocks) / maxValue)
+	maxBlocks_f64 := float64(maxBlocks)
+	noValueBlocks := value * maxBlocks_f64 / maxValue
 	// adjust to show a block asap
 	if noValueBlocks == 0 && value > 0 {
 		noValueBlocks = 1
 	}
 	// ensure noValueBlocks doesn't exceed maxBlocks
-	if noValueBlocks > maxBlocks {
-		noValueBlocks = maxBlocks
+	if noValueBlocks > maxBlocks_f64 {
+		noValueBlocks = maxBlocks_f64
 	}
-	noBgBlocks := maxBlocks - noValueBlocks
+
+	// avoid negative `Repeat` count
+	noValueBlocks = math.Max(float64(noValueBlocks), 0)
+	noBgBlocks := maxBlocks_f64 - noValueBlocks
 
 	return strings.Repeat(fgBlock, int(noValueBlocks)) +
-		strings.Repeat(bgBlock, noBgBlocks)
+		strings.Repeat(bgBlock, int(noBgBlocks))
 }
