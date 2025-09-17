@@ -70,44 +70,53 @@ func InitialModel(path string) Model {
 	// to make sure `spinner.Tick` is fired once. Currently in `Init`.
 	delegate := NewListDelegate(&s)
 
-	list := list.New([]list.Item{}, &delegate, 20, 0)
-	list.Title = ""
+	l := list.New([]list.Item{}, &delegate, 20, 0)
+	// Keep `Title` empty for now
+	// It will be set (incl. styles) in `LeftContentView`
+	l.Title = ""
+
+	// Unbind `Page` keys (they don't work for any reason)
+	// Now we can toggle `live data` using "l" key without to get in conflict anymore
+	keyMap := list.DefaultKeyMap()
+	keyMap.NextPage.Unbind()
+	keyMap.PrevPage.Unbind()
+	l.KeyMap = keyMap
 
 	// styles for prompt needs to be passed to `FilterInput`
-	fi := list.FilterInput
-	fi.Prompt = "/"
-	fi.PromptStyle = emptyStyle
-	fi.Cursor.Style = emptyStyle
-	list.FilterInput = fi
+	lfi := l.FilterInput
+	lfi.Prompt = "/"
+	lfi.PromptStyle = emptyStyle
+	lfi.Cursor.Style = emptyStyle
+	l.FilterInput = lfi
 
 	// styles for paginator needs to be passed to `Paginator`
-	p := list.Paginator
-	p.ActiveDot = lipgloss.NewStyle().SetString(BulletPointBig).String()
-	p.InactiveDot = lipgloss.NewStyle().SetString(BulletPoint).String()
-	list.Paginator = p
+	lp := l.Paginator
+	lp.ActiveDot = lipgloss.NewStyle().SetString(BulletPointBig).String()
+	lp.InactiveDot = lipgloss.NewStyle().SetString(BulletPoint).String()
+	l.Paginator = lp
 
-	ls := list.Styles
+	ls := l.Styles
 	ls.Title = emptyStyle
-	ls.DividerDot = list.Styles.DividerDot.Foreground(noColor)
-	ls.StatusBar = list.Styles.StatusBar.Foreground(noColor)
+	ls.DividerDot = l.Styles.DividerDot.Foreground(noColor)
+	ls.StatusBar = l.Styles.StatusBar.Foreground(noColor)
 	ls.StatusEmpty = emptyStyle
 	ls.StatusBarActiveFilter = emptyStyle
 	ls.StatusBarFilterCount = emptyStyle
 	ls.NoItems = emptyStyle
 
-	list.Styles = ls
+	l.Styles = ls
 
-	list.SetSpinner(spinner.MiniDot)
-	list.SetShowHelp(false)
-	list.SetShowTitle(true)
-	list.SetShowStatusBar(false)
+	l.SetSpinner(spinner.MiniDot)
+	l.SetShowHelp(false)
+	l.SetShowTitle(true)
+	l.SetShowStatusBar(false)
 
 	return Model{
 		importPath:   path,
 		importIndex:  0,
 		activities:   common.Activities{},
 		spinner:      s,
-		list:         list,
+		list:         l,
 		width:        0,
 		height:       0,
 		showMenu:     false,
@@ -636,8 +645,7 @@ func (m Model) footerView() string {
 
 		listTxt := col("["+arrowTop+"]up") +
 			col("["+arrowDown+"]down") +
-			col("[g]first", "[G]last") +
-			col("[←/→]switch pages")
+			col("[g]first", "[G]last")
 
 		filterTxt := col(filterCol2) + col(filterCol3)
 
