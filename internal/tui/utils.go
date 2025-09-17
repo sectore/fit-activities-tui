@@ -92,8 +92,8 @@ func SortItems(items []list.Item, sort ActsSort) []list.Item {
 func HorizontalStackedBar(value1 float64, value1Block string, value2 float64, value2Block string, maxBlocks int) string {
 	total := value1 + value2
 	value2Percent := value2 * float64(maxBlocks) / total
-	// integer is needed to count blocks
-	noValue2Blocks := int(value2Percent)
+	// use rounding instead of truncation for better proportional representation
+	noValue2Blocks := int(math.Round(value2Percent))
 	// adjust `noValue2Blocks` to still show small values of `pauseValue` < 1
 	if noValue2Blocks == 0 && value2 > 0 {
 		noValue2Blocks = 1
@@ -116,13 +116,17 @@ func HorizontalBar(value float64, fgBlock string, maxValue float64, bgBlock stri
 	// avoid negative `Repeat` count
 	noValueBlocks = math.Max(float64(noValueBlocks), 0)
 	// re-adjust to show a block asap
-	if noValueBlocks == 0 && value > 0 {
+	if int(noValueBlocks) == 0 && value > 0 {
 		noValueBlocks = 1
 	}
-	noBgBlocks := maxBlocks_f64 - noValueBlocks
 
-	return strings.Repeat(fgBlock, int(noValueBlocks)) +
-		strings.Repeat(bgBlock, int(noBgBlocks))
+	// convert to integer for foreground blocks
+	fgBlocks := int(noValueBlocks)
+	// calculate background blocks to ensure total equals maxBlocks
+	bgBlocks := maxBlocks - fgBlocks
+
+	return strings.Repeat(fgBlock, fgBlocks) +
+		strings.Repeat(bgBlock, bgBlocks)
 }
 
 func TimeToDuration(start common.Time, end common.Time) common.Duration {

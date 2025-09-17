@@ -24,7 +24,7 @@ func TestHorizontalStackedBar(t *testing.T) {
 			value2:      221, // pause seconds
 			value2Block: "░",
 			maxBlocks:   50,
-			expected:    "▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒░░░",
+			expected:    "▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒░░░░",
 		},
 		{
 			name:        "active 1h 11m 45s pause 33m 47s",
@@ -61,6 +61,15 @@ func TestHorizontalStackedBar(t *testing.T) {
 			value2Block: "░",
 			maxBlocks:   50,
 			expected:    "▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒",
+		},
+		{
+			name:        "disproportionate allocation due to truncation",
+			value1:      50.0,
+			value1Block: "▒",
+			value2:      49.9, // Almost equal values, should get nearly equal blocks
+			value2Block: "░",
+			maxBlocks:   8,
+			expected:    "▒▒▒▒░░░░", // Should be 4 and 4, but current gives 5 and 3 due to truncation
 		},
 	}
 
@@ -215,6 +224,15 @@ func TestHorizontalBar(t *testing.T) {
 			bgBlock:   "░",
 			maxBlocks: 20,
 			expected:  "████████████████████",
+		},
+		{
+			name:      "missing blocks due to float truncation",
+			value:     27.5,
+			fgBlock:   "▒",
+			maxValue:  50,
+			bgBlock:   "░",
+			maxBlocks: 50,
+			expected:  "▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒░░░░░░░░░░░░░░░░░░░░░░░", // Should be 27 fg + 23 bg = 50 total
 		},
 	}
 
