@@ -59,7 +59,7 @@ func ActivitiesTotalDuration(acts common.Activities) common.Duration {
 func ListItemsToActivities(items []list.Item) common.Activities {
 	var acts common.Activities
 	for _, item := range items {
-		if act, ok := item.(common.Activity); ok {
+		if act, ok := item.(*common.Activity); ok {
 			acts = append(acts, act)
 		}
 	}

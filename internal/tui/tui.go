@@ -143,11 +143,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	if m.playLiveData {
 		item := m.list.SelectedItem()
-		if act, ok := item.(common.Activity); ok {
-			if ad, ok := asyncdata.Success(act.Data); ok {
-				ad := *ad
-				ad.CountRecordIndex()
-			}
+		if act, ok := item.(*common.Activity); ok {
+			act.CountRecordIndex()
 		}
 	}
 	switch msg := msg.(type) {
@@ -163,22 +160,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// reset `selectedRecordIndex` of SELECTED item
 			if !m.list.SettingFilter() {
 				item := m.list.SelectedItem()
-				if act, ok := item.(common.Activity); ok {
-					if ad, ok := asyncdata.Success(act.Data); ok {
-						ad := *ad
-						ad.ResetRecordIndex()
-					}
+				if act, ok := item.(*common.Activity); ok {
+					act.ResetRecordIndex()
 				}
 			}
 		case "ctrl+r":
 			// reset `selectedRecordIndex` of ALL items
 			if !m.list.SettingFilter() {
 				for _, item := range m.list.Items() {
-					if act, ok := item.(common.Activity); ok {
-						if ad, ok := asyncdata.Success(act.Data); ok {
-							ad := *ad
-							ad.ResetRecordIndex()
-						}
+					if act, ok := item.(*common.Activity); ok {
+						act.ResetRecordIndex()
 					}
 				}
 			}
@@ -236,24 +227,24 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case getFilesResultMsg:
 		// list of `NotAsked` activities
-		activities := make([]common.Activity, len(msg))
+		activities := make([]*common.Activity, len(msg))
 		for i, path := range msg {
-			activities[i] = common.Activity{
+			activities[i] = &common.Activity{
 				Path: path,
-				Data: asyncdata.NewNotAsked[error, *common.ActivityData](),
+				Data: asyncdata.NewNotAsked[error, common.ActivityData](),
 			}
 		}
 		m.activities = activities
 		// parse first Activity
 		firstAct := m.activities[0]
-		firstAct.Data = asyncdata.NewLoading[error, *common.ActivityData](nil)
+		firstAct.Data = asyncdata.NewLoading[error, common.ActivityData](nil)
 		cmds = append(cmds, parseFileCmd(firstAct))
 
 	case parseFileResultMsg:
 		i := m.importIndex
-		m.activities[i] = msg.Activity
+		*m.activities[i] = *msg.Activity
 		// add new item to current items
-		items := append(m.list.Items(), msg.Activity)
+		items := append(m.list.Items(), m.activities[i])
 		// sort list
 		items = SortItems(items, m.actsSort)
 		// set sorted items to list
@@ -263,7 +254,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if i < len(m.activities)-1 {
 			m.importIndex++
 			act := m.activities[m.importIndex]
-			act.Data = asyncdata.NewLoading[error, *common.ActivityData](nil)
+			act.Data = asyncdata.NewLoading[error, common.ActivityData](nil)
 			cmds = append(cmds, parseFileCmd(act))
 
 		}
@@ -368,17 +359,17 @@ func (m Model) RightContentView() string {
 		var col1 = lipgloss.NewStyle().Width(BAR_WIDTH / 2).Render
 		var col2 = lipgloss.NewStyle().Width(BAR_WIDTH / 2).Align(lipgloss.Right).Render
 
-		if act, ok := item.(common.Activity); ok {
+		if act, ok := item.(*common.Activity); ok {
 
 			totalDistance := act.TotalDistance().Format()
 
 			var rows [][]string
+			if ad, ok := asyncdata.Success(act.Data); ok {
 
-			if actPtr, ok := asyncdata.Success(act.Data); ok {
-				act := *actPtr
-				currentRecord := act.SelectedRecord()
-				noRecordsText := fmt.Sprintf(`%d`, act.NoRecords())
-				noSessionsText := fmt.Sprintf(`%d`, act.NoSessions)
+				currentRecord := ad.Records[act.RecordIndex()]
+
+				noRecordsText := fmt.Sprintf(`%d`, ad.NoRecords())
+				noSessionsText := fmt.Sprintf(`%d`, ad.NoSessions)
 
 				b1 := BarEmptyHalf
 				// b1 := "⣿"
@@ -393,54 +384,54 @@ func (m Model) RightContentView() string {
 				if m.showLiveData {
 					dateTxt := currentRecord.Time.FormatDate()
 					distanceTxt := col1(currentRecord.Distance.Format()) +
-						col2(act.TotalDistance.Format())
+						col2(ad.TotalDistance.Format())
 					distanceBar := HorizontalBar(
 						float64(currentRecord.Distance.Value),
 						b1,
-						float64(act.TotalDistance.Value),
+						float64(ad.TotalDistance.Value),
 						b2,
 						BAR_WIDTH)
 					timeTxt := col1(currentRecord.Time.FormatHhMmSs()) +
-						col2(act.FinishTime().FormatHhMmSs())
+						col2(ad.FinishTime().FormatHhMmSs())
 					timeBar := HorizontalBar(
-						float64(currentRecord.Time.Value.Unix()-act.StartTime().Value.Unix()),
+						float64(currentRecord.Time.Value.Unix()-ad.StartTime().Value.Unix()),
 						b1,
-						float64(act.FinishTime().Value.Unix()-act.StartTime().Value.Unix()),
+						float64(ad.FinishTime().Value.Unix()-ad.StartTime().Value.Unix()),
 						b2,
 						BAR_WIDTH)
 					speedTxt := col1(currentRecord.Speed.Format()) +
-						col2(act.Speed.Max.Format())
+						col2(ad.Speed.Max.Format())
 					speedBar := HorizontalBar(
 						float64(currentRecord.Speed.Value),
 						b1,
-						float64(act.Speed.Max.Value),
+						float64(ad.Speed.Max.Value),
 						b2,
 						// "⠉",
 						BAR_WIDTH)
 					altitudeTxt := col1(currentRecord.Altitude.Format()) +
-						col2(act.Altitude.Max.Format())
+						col2(ad.Altitude.Max.Format())
 
 					altitudeBar := HorizontalBar(
 						float64(currentRecord.Altitude.Value),
 						b1,
-						float64(act.Altitude.Max.Value),
+						float64(ad.Altitude.Max.Value),
 						b2,
 						BAR_WIDTH)
 
 					temperatureTxt := col1(currentRecord.Temperature.Format()) +
-						col2(act.Temperature.Max.Format())
+						col2(ad.Temperature.Max.Format())
 					temperatureBar := HorizontalBar(
 						float64(currentRecord.Temperature.Value),
 						b1,
-						float64(act.Temperature.Max.Value),
+						float64(ad.Temperature.Max.Value),
 						b2,
 						BAR_WIDTH)
 					gpsTxt := col1(currentRecord.GpsAccuracy.Format()) +
-						col2(act.GpsAccuracy.Max.Format())
+						col2(ad.GpsAccuracy.Max.Format())
 					gpsBar := HorizontalBar(
 						float64(currentRecord.GpsAccuracy.Value),
 						b1,
-						float64(act.GpsAccuracy.Max.Value),
+						float64(ad.GpsAccuracy.Max.Value),
 						b2,
 						BAR_WIDTH)
 
@@ -459,54 +450,54 @@ func (m Model) RightContentView() string {
 						{"gps accuracy", gpsTxt},
 						{"", gpsBar},
 						{"sessions", noSessionsText},
-						{"record", fmt.Sprint(act.SelectedRecordIndex()+1) + " of " + noRecordsText},
+						{"record", fmt.Sprint(act.RecordIndex()+1) + " of " + noRecordsText},
 					}
 				} else {
-					dateTxt := lipgloss.NewStyle().PaddingRight(4).Render(act.StartTime().FormatDate())
-					startFinishTxt := act.StartTime().FormatHhMm() + " - " +
-						act.FinishTime().FormatHhMm()
+					dateTxt := lipgloss.NewStyle().PaddingRight(4).Render(ad.StartTime().FormatDate())
+					startFinishTxt := ad.StartTime().FormatHhMm() + " - " +
+						ad.FinishTime().FormatHhMm()
 
 					// durationTotalTxt := col1("total " + act.Duration.Total.Format())
-					durationTxt := col1(act.Duration.Active.Format())
-					if act.Duration.Pause.Value > 0 {
-						durationTxt += col2("pause " + act.Duration.Pause.Format())
+					durationTxt := col1(ad.Duration.Active.Format())
+					if ad.Duration.Pause.Value > 0 {
+						durationTxt += col2("pause " + ad.Duration.Pause.Format())
 					}
 					durationBar := HorizontalStackedBar(
-						float64(act.Duration.Active.Value),
+						float64(ad.Duration.Active.Value),
 						b1,
-						float64(act.Duration.Pause.Value),
+						float64(ad.Duration.Pause.Value),
 						b2,
 						BAR_WIDTH)
-					speedTxt := col1("⌀ "+act.Speed.Avg.Format()) +
-						col2("max "+act.Speed.Max.Format())
+					speedTxt := col1("⌀ "+ad.Speed.Avg.Format()) +
+						col2("max "+ad.Speed.Max.Format())
 					speedBar := HorizontalBar(
-						float64(act.Speed.Avg.Value),
+						float64(ad.Speed.Avg.Value),
 						b1,
-						float64(act.Speed.Max.Value),
+						float64(ad.Speed.Max.Value),
 						b2,
 						BAR_WIDTH)
-					elevationTxt := col1(arrowTop+" "+act.Elevation.Ascents.Format()) +
-						col2(arrowDown+" "+act.Elevation.Descents.Format())
+					elevationTxt := col1(arrowTop+" "+ad.Elevation.Ascents.Format()) +
+						col2(arrowDown+" "+ad.Elevation.Descents.Format())
 					elevationBar := HorizontalStackedBar(
-						float64(act.Elevation.Ascents.Value),
+						float64(ad.Elevation.Ascents.Value),
 						b1,
-						float64(act.Elevation.Descents.Value),
+						float64(ad.Elevation.Descents.Value),
 						b2,
 						BAR_WIDTH)
-					temperatureTxt := col1("⌀ "+act.Temperature.Avg.Format()) +
-						col2("max "+act.Temperature.Max.Format())
+					temperatureTxt := col1("⌀ "+ad.Temperature.Avg.Format()) +
+						col2("max "+ad.Temperature.Max.Format())
 					temperatureBar := HorizontalBar(
-						float64(act.Temperature.Avg.Value),
+						float64(ad.Temperature.Avg.Value),
 						b1,
-						float64(act.Temperature.Max.Value),
+						float64(ad.Temperature.Max.Value),
 						b2,
 						BAR_WIDTH)
-					gpsTxt := col1("⌀ "+act.GpsAccuracy.Avg.Format()) +
-						col2("max "+act.GpsAccuracy.Max.Format())
+					gpsTxt := col1("⌀ "+ad.GpsAccuracy.Avg.Format()) +
+						col2("max "+ad.GpsAccuracy.Max.Format())
 					gpsBar := HorizontalBar(
-						float64(act.GpsAccuracy.Avg.Value),
+						float64(ad.GpsAccuracy.Avg.Value),
 						b1,
-						float64(act.GpsAccuracy.Max.Value),
+						float64(ad.GpsAccuracy.Max.Value),
 						b2,
 						BAR_WIDTH)
 
@@ -678,7 +669,7 @@ func (m Model) View() string {
 
 type (
 	getFilesResultMsg  []string
-	parseFileResultMsg struct{ common.Activity }
+	parseFileResultMsg struct{ *common.Activity }
 	errMsg             struct{ err error }
 )
 
@@ -695,7 +686,7 @@ func getFilesCmd(path string) tea.Cmd {
 	}
 }
 
-func parseFileCmd(act common.Activity) tea.Cmd {
+func parseFileCmd(act *common.Activity) tea.Cmd {
 	return func() tea.Msg {
 		// channel to send result msg
 		resultCh := make(chan tea.Msg, 1)
@@ -703,12 +694,10 @@ func parseFileCmd(act common.Activity) tea.Cmd {
 		go func() {
 			data, err := fit.ParseFile(act.Path)
 			if err != nil {
-				act.Data = asyncdata.NewFailure[error, *common.ActivityData](err)
+				act.Data = asyncdata.NewFailure[error, common.ActivityData](err)
 			} else {
-				act.Data = asyncdata.NewSuccess[error, *common.ActivityData](data)
+				act.Data = asyncdata.NewSuccess[error, common.ActivityData](*data)
 			}
-			// FIXME: for debugging only
-			// time.Sleep(50 * time.Millisecond)
 			resultCh <- parseFileResultMsg{act}
 			close(resultCh)
 		}()

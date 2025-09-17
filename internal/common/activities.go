@@ -173,54 +173,37 @@ type RecordData struct {
 }
 
 type ActivityData struct {
-	Duration            DurationStats
-	TotalDistance       Distance
-	Speed               SpeedStats
-	Temperature         TemperatureStats
-	Elevation           ElevationStats
-	Altitude            AltitudeStats
-	NoSessions          uint32
-	Records             []RecordData
-	selectedRecordIndex int
-	GpsAccuracy         GpsAccuracyStats
+	Duration      DurationStats
+	TotalDistance Distance
+	Speed         SpeedStats
+	Temperature   TemperatureStats
+	Elevation     ElevationStats
+	Altitude      AltitudeStats
+	NoSessions    uint32
+	Records       []RecordData
+	GpsAccuracy   GpsAccuracyStats
 }
 
-func (ad *ActivityData) NoRecords() int {
+func (ad ActivityData) NoRecords() int {
 	return len(ad.Records)
 }
 
-func (ad *ActivityData) StartTime() Time {
+func (ad ActivityData) StartTime() Time {
 	return ad.Records[0].Time
 }
 
-func (ad *ActivityData) FinishTime() Time {
+func (ad ActivityData) FinishTime() Time {
 	last := max(ad.NoRecords()-1, 0)
 	return ad.Records[last].Time
 }
 
-func (ad *ActivityData) SelectedRecordIndex() int {
-	return ad.selectedRecordIndex
-}
-
-func (ad *ActivityData) CountRecordIndex() {
-	if ad.selectedRecordIndex < len(ad.Records)-1 {
-		ad.selectedRecordIndex += 1
-	}
-}
-
-func (ad *ActivityData) ResetRecordIndex() {
-	ad.selectedRecordIndex = 0
-}
-
-func (ad *ActivityData) SelectedRecord() RecordData {
-	return ad.Records[ad.selectedRecordIndex]
-}
-
-type ActivityAD = asyncdata.AsyncData[error, *ActivityData]
+type ActivityAD = asyncdata.AsyncData[error, ActivityData]
 
 type Activity struct {
 	Path string
-	Data ActivityAD
+	/// index of current selected `Record`
+	recordIndex int
+	Data        ActivityAD
 }
 
 func (act Activity) FilterValue() string {
@@ -276,7 +259,23 @@ func (act Activity) GetTotalDuration() Duration {
 	return total
 }
 
-type Activities = []Activity
+func (act Activity) RecordIndex() int {
+	return act.recordIndex
+}
+
+func (act *Activity) CountRecordIndex() {
+	if data, ok := asyncdata.Success(act.Data); ok {
+		if act.recordIndex < len(data.Records)-1 {
+			act.recordIndex += 1
+		}
+	}
+}
+
+func (act *Activity) ResetRecordIndex() {
+	act.recordIndex = 0
+}
+
+type Activities = []*Activity // pointer slice to mutate values of `Activity`
 
 type SortBy func(act1, act2 *Activity) bool
 
@@ -310,7 +309,7 @@ func (s *actSorter) Swap(i, j int) {
 }
 
 func (s *actSorter) Less(i, j int) bool {
-	return s.by(&s.acts[i], &s.acts[j])
+	return s.by(s.acts[i], s.acts[j])
 }
 
 var SortByDistance = func(act1, act2 *Activity) bool {
