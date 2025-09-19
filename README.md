@@ -19,8 +19,16 @@ Built with [Go](https://go.dev), [Bubble Tea](https://github.com/charmbracelet/b
 
 # Preview
 
+## Summary
+
 <a href="demo/demo.gif">
   <img alt="demo" src="demo/demo.gif" />
+</a>
+
+## Review live data (real time)
+
+<a href="demo/live-data.gif">
+  <img alt="demo" src="demo/live-data.gif" />
 </a>
 
 # CLI
