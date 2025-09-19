@@ -288,18 +288,51 @@ func (act Activity) RecordIndex() int {
 	return act.recordIndex
 }
 
-func (act *Activity) CountRecordIndex() bool {
+func (act *Activity) CountRecordIndex(value int) bool {
 	if data, ok := asyncdata.Success(act.Data); ok {
-		if act.recordIndex < len(data.Records)-1 {
-			act.recordIndex += 1
+		length := len(data.Records)
+		// empty records
+		if length == 0 {
+			act.recordIndex = 0
 			return true
 		}
+
+		index := act.recordIndex + value
+		max := length - 1
+
+		// adjust to keep valid ranges
+		if index > max {
+			act.recordIndex = max
+		} else if index < 0 {
+			act.recordIndex = 0
+		} else {
+			act.recordIndex = index
+		}
+
+		return true
 	}
+
 	return false
 }
 
 func (act *Activity) ResetRecordIndex() {
 	act.recordIndex = 0
+}
+
+// `Records` per second (RPS) based on total `Duration` and number of records
+func (act *Activity) RPS() float64 {
+	if data, ok := asyncdata.Success(act.Data); ok {
+		totalDurationMs := float64(data.Duration.Total.Value)
+		recordCount := float64(len(data.Records))
+
+		if totalDurationMs > 0 && recordCount > 0 {
+			// ms to seconds
+			totalDurationSeconds := totalDurationMs / 1000.0
+			// records per second
+			return recordCount / totalDurationSeconds
+		}
+	}
+	return 1.0 // fallback to 1 RPS
 }
 
 type Activities = []*Activity // pointer slice to mutate values of `Activity`

@@ -19,8 +19,16 @@ Built with [Go](https://go.dev), [Bubble Tea](https://github.com/charmbracelet/b
 
 # Preview
 
+## Summary
+
 <a href="demo/demo.gif">
   <img alt="demo" src="demo/demo.gif" />
+</a>
+
+## Review live data (real time)
+
+<a href="demo/live-data.gif">
+  <img alt="demo" src="demo/live-data.gif" />
 </a>
 
 # CLI
@@ -85,6 +93,34 @@ In `live data` view
 | <kbd>ctrl+d</kbd> | sort by distance |
 | <kbd>ctrl+t</kbd> | sort by start time |
 
+## Live data
+
+| Key | Description |
+| --- | --- |
+| <kbd>l</kbd> | show / hide |
+| <kbd>SPACE</kbd> | play / pause |
+| <kbd>r</kbd> | reset current record count |
+| <kbd>ctrl+r</kbd> | reset all record counts |
+
+While `playing`
+
+| Key | Description |
+| --- | --- |
+| <kbd>1-9</kbd> | 1-9x speed |
+| <kbd>0</kbd> | 10x speed |
+| <kbd>right</kbd> | increase speed |
+| <kbd>ctrl+right</kbd> | fast forward (ffw) |
+| <kbd>left</kbd> | decrease speed |
+
+
+While `paused`
+
+| Key | Description |
+| --- | --- |
+| <kbd>right</kbd> | next record |
+| <kbd>ctrl+right</kbd> | fast forward (ffw) records |
+| <kbd>left</kbd> | previous record |
+| <kbd>ctrl+left</kbd> | rewind (rwd) records |
 
 # Installation
 

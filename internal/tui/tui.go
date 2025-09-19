@@ -5,6 +5,7 @@ import (
 	"log"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/spinner"
@@ -26,21 +27,30 @@ const (
 )
 
 type Model struct {
-	importPath   string
-	importIndex  int
-	activities   common.Activities
-	errMsgs      []error
-	spinner      spinner.Model
-	list         list.Model
-	width        int
-	height       int
-	showMenu     bool
-	actsSort     ActsSort
-	showLiveData bool
-	playLiveData bool
+	importPath  string
+	importIndex int
+	activities  common.Activities
+	errMsgs     []error
+	spinner     spinner.Model
+	list        list.Model
+	width       int
+	height      int
+	showMenu    bool
+	actsSort    ActsSort
+	// live data
+	showLiveData       bool
+	playLiveData       bool
+	liveDataSpeed      uint
+	liveDataLastUpdate time.Time
 }
 
 const (
+	FPS         = 60
+	FPSDuration = time.Second / FPS
+
+	LiveDataSpeedBoost = 60 * 5 // about 5min at 1RPS
+	LiveDataMaxSpeed   = 10
+
 	arrowTop       = "↑"
 	arrowDown      = "↓"
 	BulletPointBig = "●"
@@ -70,55 +80,66 @@ func InitialModel(path string) Model {
 	// to make sure `spinner.Tick` is fired once. Currently in `Init`.
 	delegate := NewListDelegate(&s)
 
-	list := list.New([]list.Item{}, &delegate, 20, 0)
-	list.Title = ""
+	l := list.New([]list.Item{}, &delegate, 20, 0)
+	// Keep `Title` empty for now
+	// It will be set (incl. styles) in `LeftContentView`
+	l.Title = ""
+
+	// Unbind `Page` keys (they don't work for any reason)
+	// Now we can toggle `live data` using "l" key without to get in conflict anymore
+	keyMap := list.DefaultKeyMap()
+	keyMap.NextPage.Unbind()
+	keyMap.PrevPage.Unbind()
+	l.KeyMap = keyMap
 
 	// styles for prompt needs to be passed to `FilterInput`
-	fi := list.FilterInput
-	fi.Prompt = "/"
-	fi.PromptStyle = emptyStyle
-	fi.Cursor.Style = emptyStyle
-	list.FilterInput = fi
+	lfi := l.FilterInput
+	lfi.Prompt = "/"
+	lfi.PromptStyle = emptyStyle
+	lfi.Cursor.Style = emptyStyle
+	l.FilterInput = lfi
 
 	// styles for paginator needs to be passed to `Paginator`
-	p := list.Paginator
-	p.ActiveDot = lipgloss.NewStyle().SetString(BulletPointBig).String()
-	p.InactiveDot = lipgloss.NewStyle().SetString(BulletPoint).String()
-	list.Paginator = p
+	lp := l.Paginator
+	lp.ActiveDot = lipgloss.NewStyle().SetString(BulletPointBig).String()
+	lp.InactiveDot = lipgloss.NewStyle().SetString(BulletPoint).String()
+	l.Paginator = lp
 
-	ls := list.Styles
+	ls := l.Styles
 	ls.Title = emptyStyle
-	ls.DividerDot = list.Styles.DividerDot.Foreground(noColor)
-	ls.StatusBar = list.Styles.StatusBar.Foreground(noColor)
+	ls.DividerDot = l.Styles.DividerDot.Foreground(noColor)
+	ls.StatusBar = l.Styles.StatusBar.Foreground(noColor)
 	ls.StatusEmpty = emptyStyle
 	ls.StatusBarActiveFilter = emptyStyle
 	ls.StatusBarFilterCount = emptyStyle
 	ls.NoItems = emptyStyle
 
-	list.Styles = ls
+	l.Styles = ls
 
-	list.SetSpinner(spinner.MiniDot)
-	list.SetShowHelp(false)
-	list.SetShowTitle(true)
-	list.SetShowStatusBar(false)
+	l.SetSpinner(spinner.MiniDot)
+	l.SetShowHelp(false)
+	l.SetShowTitle(true)
+	l.SetShowStatusBar(false)
 
 	return Model{
-		importPath:   path,
-		importIndex:  0,
-		activities:   common.Activities{},
-		spinner:      s,
-		list:         list,
-		width:        0,
-		height:       0,
-		showMenu:     false,
-		actsSort:     TimeDesc,
-		showLiveData: false,
-		playLiveData: false,
+		importPath:         path,
+		importIndex:        0,
+		activities:         common.Activities{},
+		spinner:            s,
+		list:               l,
+		width:              0,
+		height:             0,
+		showMenu:           false,
+		actsSort:           TimeDesc,
+		showLiveData:       false,
+		playLiveData:       false,
+		liveDataSpeed:      1,
+		liveDataLastUpdate: time.Now(),
 	}
 }
 
 func (m Model) Init() tea.Cmd {
-	return tea.Batch(m.spinner.Tick, getFilesCmd(m.importPath))
+	return tea.Batch(m.spinner.Tick, getFilesCmd(m.importPath), tick())
 }
 
 func (m *Model) sortActs() tea.Cmd {
@@ -138,15 +159,17 @@ func (m *Model) sortActs() tea.Cmd {
 	return cmd
 }
 
+type tickMsg time.Time
+
+func tick() tea.Cmd {
+	return tea.Tick(FPSDuration, func(t time.Time) tea.Msg {
+		return tickMsg(t)
+	})
+}
+
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 
-	if m.playLiveData {
-		item := m.list.SelectedItem()
-		if act, ok := item.(*common.Activity); ok {
-			_ = act.CountRecordIndex()
-		}
-	}
 	switch msg := msg.(type) {
 
 	case tea.WindowSizeMsg:
@@ -198,6 +221,86 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case " ":
 			if m.showLiveData {
 				m.playLiveData = !m.playLiveData
+				if m.playLiveData {
+					m.liveDataLastUpdate = time.Now()
+				}
+			}
+		case "0", "1", "2", "3", "4", "5", "6", "7", "8", "9":
+			if m.showLiveData && !m.list.SettingFilter() {
+				// Convert ASCII values to integer:
+				// 1. msg.String()[0]` gets the first character of the key press as a byte
+				// 2. `- '0'` subtracts the ASCII value of '0' (48) from it
+				// 3. `int()` converts the result to an integer
+				// Examples:
+				// - `'1' - '0'` = 49 - 48 = 1
+				// - `'5' - '0'` = 53 - 48 = 5
+				// - `'9' - '0'` = 57 - 48 = 9
+				speed := uint(msg.String()[0] - '0')
+				if speed == 0 {
+					speed = LiveDataMaxSpeed
+				}
+				m.liveDataSpeed = speed
+			}
+		case "left":
+			if m.showLiveData && !m.list.SettingFilter() {
+				if m.playLiveData {
+					// playing: decrease speed
+					if m.liveDataSpeed > 1 {
+						m.liveDataSpeed--
+					}
+				} else {
+					// pause: skip back to previous `Record`
+					item := m.list.SelectedItem()
+					if act, ok := item.(*common.Activity); ok {
+						act.CountRecordIndex(-1)
+					}
+				}
+			}
+		case "ctrl+left":
+			if m.showLiveData &&
+				!m.list.SettingFilter() {
+				// pause only (ignore playing):
+				// skip to a previous `Record` (boosted)
+				if !m.playLiveData {
+					item := m.list.SelectedItem()
+					if act, ok := item.(*common.Activity); ok {
+						back := -LiveDataSpeedBoost
+						act.CountRecordIndex(back)
+					}
+				}
+			}
+		case "right":
+			if m.showLiveData && !m.list.SettingFilter() {
+				// playing: increase speed
+				if m.playLiveData {
+					if m.liveDataSpeed < 10 {
+						m.liveDataSpeed++
+					}
+				} else {
+					// pause: skip to next `Record`
+					item := m.list.SelectedItem()
+					if act, ok := item.(*common.Activity); ok {
+						act.CountRecordIndex(1)
+					}
+				}
+			}
+
+		case "ctrl+right":
+			if m.showLiveData &&
+				!m.list.SettingFilter() {
+				// playing: increase speed (boosted)
+				if m.playLiveData {
+					if m.liveDataSpeed <= LiveDataMaxSpeed {
+						m.liveDataSpeed += LiveDataSpeedBoost
+					}
+				} else {
+					// pause: skip to a next `Record` (boosted)
+					item := m.list.SelectedItem()
+					if act, ok := item.(*common.Activity); ok {
+						next := LiveDataSpeedBoost
+						act.CountRecordIndex(next)
+					}
+				}
 			}
 		case "ctrl+d":
 			if !ActivitiesParsing(m.activities) {
@@ -256,11 +359,42 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			act := m.activities[m.importIndex]
 			act.Data = asyncdata.NewLoading[error, common.ActivityData](nil)
 			cmds = append(cmds, parseFileCmd(act))
-
 		}
 
 	case errMsg:
 		m.errMsgs = append(m.errMsgs, msg)
+
+	case tickMsg:
+		now := time.Now()
+
+		// live data playback
+		if m.playLiveData {
+			item := m.list.SelectedItem()
+			if act, ok := item.(*common.Activity); ok {
+				elapsed := now.Sub(m.liveDataLastUpdate).Milliseconds()
+				if elapsed > 0 {
+					// transform RPS -> RPmS (records per millisecond)
+					rpms := act.RPS() / 1000.0
+					// For "smooth" updates:
+					// Calculate how many records to advance based on elapsed time and speed
+					recordsToAdvance := int(float64(elapsed) * rpms * float64(m.liveDataSpeed))
+
+					if recordsToAdvance > 0 {
+						_ = act.CountRecordIndex(recordsToAdvance)
+						m.liveDataLastUpdate = now
+					}
+				}
+			}
+		}
+
+		// Reset speed boost an user might done before
+		// so it will be for one "tick" available only
+		if m.liveDataSpeed > LiveDataMaxSpeed {
+			m.liveDataSpeed = m.liveDataSpeed - LiveDataSpeedBoost
+		}
+
+		cmd := tick()
+		cmds = append(cmds, cmd)
 
 	case spinner.TickMsg:
 		s, cmd := m.spinner.Update(msg)
@@ -348,7 +482,7 @@ func (m Model) RightContentView() string {
 		if m.showLiveData {
 			playLabel = "paused"
 			if m.playLiveData {
-				playLabel = "playing"
+				playLabel = fmt.Sprintf("playing (speed %dx)", int(m.liveDataSpeed))
 			}
 		}
 
@@ -368,15 +502,15 @@ func (m Model) RightContentView() string {
 
 				currentRecord := ad.Records[act.RecordIndex()]
 
-				noRecordsText := fmt.Sprintf(`%d`, ad.NoRecords())
+				rps := act.RPS()
+				noRecordsText := fmt.Sprintf(`%d (%.1frps)`, ad.NoRecords(), rps)
 				noSessionsText := fmt.Sprintf(`%d`, ad.NoSessions)
-
-				dateTxt := ad.StartTime().Format() + "-" + ad.FinishTime().FormatHhMm()
 
 				b1 := BarEmptyHalf
 				b2 := BarEmpty
 
 				if m.showLiveData {
+					timeTxt := currentRecord.Time.FormatDate() + " " + currentRecord.Time.FormatHhMmSs()
 					distanceTxt := col1(currentRecord.Distance.Format3()) +
 						col2(ad.TotalDistance.Format3())
 					distanceBar := HorizontalBar(
@@ -431,7 +565,7 @@ func (m Model) RightContentView() string {
 						BAR_WIDTH)
 
 					rows = [][]string{
-						{"date", dateTxt},
+						{"time", timeTxt},
 						{"distance", distanceTxt},
 						{"", distanceBar},
 						{"duration", durationTxt},
@@ -449,6 +583,7 @@ func (m Model) RightContentView() string {
 					}
 				} else {
 
+					dateTxt := ad.StartTime().Format() + "-" + ad.FinishTime().FormatHhMm()
 					durationTxt := col1(ad.Duration.Active.Format())
 					pauseTxt := "pause " + ad.Duration.Pause.Format()
 					if ad.Duration.Pause.Value <= 0 {
@@ -619,33 +754,41 @@ func (m Model) footerView() string {
 		}
 
 		col := lipgloss.NewStyle().PaddingRight(3).Render
-		actionsTxt := col("[l]show live data")
+
+		liveDataTxt := col("[l]show")
 		if m.showLiveData {
-			actionsTxt = col("[l]hide live data")
+			liveDataTxt = col("[l]hide")
 			if m.playLiveData {
-				actionsTxt += col("[space]stop")
+				liveDataTxt += col("[space]stop")
+				liveDataTxt += col("[1-9]1-9x")
+				liveDataTxt += col("[0]10x")
+				liveDataTxt += col("[→]+1x")
+				liveDataTxt += col("[←]-1x")
+				liveDataTxt += col("[^+→]boost")
 			} else {
-				actionsTxt += col("[space]play")
+				liveDataTxt += col("[space]play")
+				liveDataTxt += col("[→]next")
+				liveDataTxt += col("[^→]ffw")
+				liveDataTxt += col("[←]prev.")
+				liveDataTxt += col("[^←]rwd")
 			}
-			actionsTxt += col("[r]eset record count")
-			actionsTxt += col("[^r]eset record counts")
+			liveDataTxt += col("[r]eset")
+			liveDataTxt += col("[^r]eset all")
 		}
-		actionsTxt += col("[q]uit")
 
 		sortTxt := col("[^t]ime") + col("[^d]uration")
 
 		listTxt := col("["+arrowTop+"]up") +
 			col("["+arrowDown+"]down") +
-			col("[g]first", "[G]last") +
-			col("[←/→]switch pages")
+			col("[g]first", "[G]last")
 
 		filterTxt := col(filterCol2) + col(filterCol3)
 
 		rows := [][]string{
-			{"actions", actionsTxt},
 			{"list", listTxt},
 			{"sort", sortTxt},
 			{"filter", filterTxt},
+			{"live data", liveDataTxt},
 		}
 		table := table.New().
 			Rows(rows...).
