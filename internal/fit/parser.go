@@ -2,6 +2,7 @@ package fit
 
 import (
 	"fmt"
+	"log"
 	"math"
 	"os"
 
@@ -65,11 +66,34 @@ func ParseFile(file string) (*common.ActivityData, error) {
 	}
 	var gpsSum, gpsCount uint
 
+	// Debug: Log altitude data from first session
+	if len(act.Sessions) > 0 {
+		s := act.Sessions[0]
+		log.Printf("DEBUG Session Altitude - MinAltitude: %v (scaled: %v), EnhancedMinAltitude: %v (scaled: %v)",
+			s.MinAltitude, s.MinAltitudeScaled(), s.EnhancedMinAltitude, s.EnhancedMinAltitudeScaled())
+		log.Printf("DEBUG Session Altitude - MaxAltitude: %v (scaled: %v), EnhancedMaxAltitude: %v (scaled: %v)",
+			s.MaxAltitude, s.MaxAltitudeScaled(), s.EnhancedMaxAltitude, s.EnhancedMaxAltitudeScaled())
+		log.Printf("DEBUG Session Altitude - AvgAltitude: %v (scaled: %v), EnhancedAvgAltitude: %v (scaled: %v)",
+			s.AvgAltitude, s.AvgAltitudeScaled(), s.EnhancedAvgAltitude, s.EnhancedAvgAltitudeScaled())
+	}
+
 	for _, r := range act.Records {
 
-		attitudeValue := r.AltitudeScaled()
-		if math.IsNaN(attitudeValue) || math.Float64bits(attitudeValue) == basetype.Float64Invalid {
-			attitudeValue = 0
+		// Debug: Log altitude field values for first 3 records to see pattern
+		if len(records) < 10 {
+			log.Printf("DEBUG Record[%d] Altitude - Altitude: %v (scaled: %v), EnhancedAltitude: %v (scaled: %v)",
+				len(records), r.Altitude, r.AltitudeScaled(), r.EnhancedAltitude, r.EnhancedAltitudeScaled())
+		}
+
+		// Use EnhancedAltitude if available, otherwise fallback to Altitude
+		// This ensures compatibility with Garmin (uses EnhancedAltitude in records)
+		// Note: Wahoo devices don't populate per-record altitude, only session-level altitude
+		altitudeValue := r.EnhancedAltitudeScaled()
+		if math.IsNaN(altitudeValue) || math.Float64bits(altitudeValue) == basetype.Float64Invalid {
+			altitudeValue = r.AltitudeScaled()
+			if math.IsNaN(altitudeValue) || math.Float64bits(altitudeValue) == basetype.Float64Invalid {
+				altitudeValue = 0
+			}
 		}
 
 		temperature := r.Temperature
@@ -102,7 +126,7 @@ func ParseFile(file string) (*common.ActivityData, error) {
 			Distance:    common.NewDistance(distance),
 			Speed:       common.NewSpeed(float32(speed)),
 			Temperature: common.NewTemperature(float32(temperature)),
-			Altitude:    common.NewAltitude(attitudeValue),
+			Altitude:    common.NewAltitude(altitudeValue),
 			GpsAccuracy: common.NewGpsAccuracy(float32(gpsAccuracy)),
 		}
 		records = append(records, record)
@@ -210,13 +234,22 @@ func ParseFile(file string) (*common.ActivityData, error) {
 			elevationStats.Descents.Value += descentValue
 		}
 
-		minAltitudeValue := s.MinAltitudeScaled()
+		// Use EnhancedMinAltitude if available, otherwise fallback to MinAltitude
+		// Wahoo populates both, Garmin doesn't populate session altitude
+		minAltitudeValue := s.EnhancedMinAltitudeScaled()
+		if math.IsNaN(minAltitudeValue) || math.Float64bits(minAltitudeValue) == basetype.Float64Invalid {
+			minAltitudeValue = s.MinAltitudeScaled()
+		}
 		if !math.IsNaN(minAltitudeValue) && math.Float64bits(minAltitudeValue) != basetype.Float64Invalid {
 			altitudeStats.Min.Value = minAltitudeValue
 		}
 
-		maxAltitudeValue := s.MaxAltitudeScaled()
-		if !math.IsNaN(maxAltitudeValue) && math.Float64bits(minAltitudeValue) != basetype.Float64Invalid {
+		// Use EnhancedMaxAltitude if available, otherwise fallback to MaxAltitude
+		maxAltitudeValue := s.EnhancedMaxAltitudeScaled()
+		if math.IsNaN(maxAltitudeValue) || math.Float64bits(maxAltitudeValue) == basetype.Float64Invalid {
+			maxAltitudeValue = s.MaxAltitudeScaled()
+		}
+		if !math.IsNaN(maxAltitudeValue) && math.Float64bits(maxAltitudeValue) != basetype.Float64Invalid {
 			altitudeStats.Max.Value = maxAltitudeValue
 		}
 	}
