@@ -91,6 +91,11 @@ func SortItems(items []list.Item, sort ActsSort) []list.Item {
 
 func HorizontalStackedBar(value1 float64, value1Block string, value2 float64, value2Block string, maxBlocks int) string {
 	total := value1 + value2
+	// handle edge case where total is 0 or negative
+	if total <= 0 {
+		return strings.Repeat(value1Block, maxBlocks)
+	}
+
 	value2Percent := value2 * float64(maxBlocks) / total
 	// use rounding instead of truncation for better proportional representation
 	noValue2Blocks := int(math.Round(value2Percent))
@@ -98,30 +103,39 @@ func HorizontalStackedBar(value1 float64, value1Block string, value2 float64, va
 	if noValue2Blocks == 0 && value2 > 0 {
 		noValue2Blocks = 1
 	}
-	// adjust `noValue1Blocks` to be never < 0
-	// to avoid negative `Repeat` count
-	noValue1Blocks := math.Max(float64(maxBlocks-noValue2Blocks), 0)
-	return strings.Repeat(value1Block, int(noValue1Blocks)) +
+	// adjust `noValue2Blocks` to not exceed maxBlocks
+	if noValue2Blocks > maxBlocks {
+		noValue2Blocks = maxBlocks
+	}
+	// calculate noValue1Blocks ensuring it's never negative
+	noValue1Blocks := maxBlocks - noValue2Blocks
+	return strings.Repeat(value1Block, noValue1Blocks) +
 		strings.Repeat(value2Block, noValue2Blocks)
 }
 
 func HorizontalBar(value float64, fgBlock string, maxValue float64, bgBlock string, maxBlocks int) string {
+	// handle edge case where maxValue is 0 or negative
+	if maxValue <= 0 {
+		return strings.Repeat(bgBlock, maxBlocks)
+	}
+
 	maxBlocks_f64 := float64(maxBlocks)
 	noValueBlocks := value * maxBlocks_f64 / maxValue
-	// ensure noValueBlocks doesn't exceed maxBlocks
-	if noValueBlocks > maxBlocks_f64 {
+
+	// ensure noValueBlocks is valid and doesn't exceed maxBlocks
+	if math.IsNaN(noValueBlocks) || math.IsInf(noValueBlocks, 0) || noValueBlocks < 0 {
+		noValueBlocks = 0
+	} else if noValueBlocks > maxBlocks_f64 {
 		noValueBlocks = maxBlocks_f64
 	}
 
-	// avoid negative `Repeat` count
-	noValueBlocks = math.Max(float64(noValueBlocks), 0)
 	// re-adjust to show a block asap
 	if int(noValueBlocks) == 0 && value > 0 {
 		noValueBlocks = 1
 	}
 
-	// convert to integer for foreground blocks
-	fgBlocks := int(noValueBlocks)
+	// convert to integer for foreground blocks, ensuring it doesn't exceed maxBlocks
+	fgBlocks := min(int(noValueBlocks), maxBlocks)
 	// calculate background blocks to ensure total equals maxBlocks
 	bgBlocks := maxBlocks - fgBlocks
 
