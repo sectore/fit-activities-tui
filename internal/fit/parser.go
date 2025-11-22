@@ -82,9 +82,14 @@ func ParseFile(file string) (*common.ActivityData, error) {
 			distance = 0
 		}
 
-		speed := r.Speed
-		if speed == basetype.Uint16Invalid {
-			speed = 0
+		// Use `EnhancedSpeed` if available, otherwise fallback to `Speed`
+		// This ensures compatibility with both Garmin (uses EnhancedSpeed) and Wahoo (uses both)
+		speed := r.EnhancedSpeed
+		if speed == basetype.Uint32Invalid {
+			speed = uint32(r.Speed)
+			if r.Speed == basetype.Uint16Invalid {
+				speed = 0
+			}
 		}
 
 		gpsAccuracy := r.GpsAccuracy
@@ -103,15 +108,12 @@ func ParseFile(file string) (*common.ActivityData, error) {
 		records = append(records, record)
 
 		// Speed stats calculation
-		speedValue := r.Speed
-		if speedValue != basetype.Uint16Invalid {
-			speedValue_f := float32(r.Speed)
-			if speedStats.Max.Value < speedValue_f {
-				speedStats.Max.Value = speedValue_f
-			}
-			speedCount += 1
-			speedTotal += uint(speedValue)
+		speed_f := float32(speed)
+		if speedStats.Max.Value < speed_f {
+			speedStats.Max.Value = speed_f
 		}
+		speedCount += 1
+		speedTotal += uint(speed)
 
 		// Calculate speed average
 		if speedCount > 0 {
