@@ -540,10 +540,14 @@ func (m Model) RightContentView() string {
 					altitudeTxt := col1(currentRecord.Altitude.Format()) +
 						col2(ad.Altitude.Max.Format())
 
+					// Normalize altitude to 0-based range for bar chart (altitude can be negative)
+					// Need to normalize relative to min altitude to handle negative values
+					altitudeRange := ad.Altitude.Max.Value - ad.Altitude.Min.Value
+					normalizedAltitude := currentRecord.Altitude.Value - ad.Altitude.Min.Value
 					altitudeBar := HorizontalBar(
-						float64(currentRecord.Altitude.Value),
+						float64(normalizedAltitude),
 						b1,
-						float64(ad.Altitude.Max.Value),
+						float64(altitudeRange),
 						b2,
 						BAR_WIDTH)
 
