@@ -3,6 +3,7 @@ package tui
 import (
 	"fmt"
 	"log"
+	"math"
 	"path/filepath"
 	"strings"
 	"time"
@@ -492,6 +493,7 @@ func (m Model) RightContentView() string {
 		const BAR_WIDTH = 50
 		var col1 = lipgloss.NewStyle().Width(BAR_WIDTH / 2).Render
 		var col2 = lipgloss.NewStyle().Width(BAR_WIDTH / 2).Align(lipgloss.Right).Render
+		var th = lipgloss.NewStyle().Bold(true).Render
 
 		if act, ok := item.(*common.Activity); ok {
 
@@ -511,8 +513,8 @@ func (m Model) RightContentView() string {
 
 				if m.showLiveData {
 					timeTxt := currentRecord.Time.FormatDate() + " " + currentRecord.Time.FormatHhMmSs()
-					distanceTxt := col1(currentRecord.Distance.Format3()) +
-						col2(ad.TotalDistance.Format3())
+					distanceTxt := col1("start") +
+						col2("finish "+ad.TotalDistance.Format3())
 					distanceBar := HorizontalBar(
 						float64(currentRecord.Distance.Value),
 						b1,
@@ -521,25 +523,26 @@ func (m Model) RightContentView() string {
 						BAR_WIDTH)
 					currentDuration := TimeToDuration(ad.StartTime(), currentRecord.Time)
 					finalDuration := TimeToDuration(ad.StartTime(), ad.FinishTime())
-					durationTxt := col1(currentDuration.Format()) +
-						col2(finalDuration.Format())
+					durationTxt := col1("start") +
+						col2("finish "+finalDuration.Format())
 					timeBar := HorizontalBar(
 						float64(currentDuration.Value),
 						b1,
 						float64(finalDuration.Value),
 						b2,
 						BAR_WIDTH)
-					speedTxt := col1(currentRecord.Speed.Format()) +
-						col2(ad.Speed.Max.Format())
+					speedTxt := col1("min "+common.NewSpeed(0).Format()) +
+						col2("max "+ad.Speed.Max.Format())
 					speedBar := HorizontalBar(
 						float64(currentRecord.Speed.Value),
 						b1,
 						float64(ad.Speed.Max.Value),
 						b2,
 						BAR_WIDTH)
-					altitudeTxt := col1(currentRecord.Altitude.Format()) +
-						col2(ad.Altitude.Max.Format())
 
+					minAltitude := math.Min(float64(ad.Altitude.Min.Value), 0)
+					altitudeTxt := col1("min "+common.NewAltitude(minAltitude).Format()) +
+						col2("max "+ad.Altitude.Max.Format())
 					altitudeBar := HorizontalBarWithRange(
 						float64(currentRecord.Altitude.Value),
 						b1,
@@ -548,39 +551,43 @@ func (m Model) RightContentView() string {
 						b2,
 						BAR_WIDTH)
 
-					temperatureTxt := col1(currentRecord.Temperature.Format()) +
-						col2(ad.Temperature.Max.Format())
-					temperatureBar := HorizontalBar(
+					minTemperature := math.Min(float64(ad.Temperature.Min.Value), 0)
+					temperatureTxt := col1("min "+common.NewTemperature(float32(minTemperature)).Format()) +
+						col2("max "+ad.Temperature.Max.Format())
+					temperatureBar := HorizontalBarWithRange(
 						float64(currentRecord.Temperature.Value),
 						b1,
+						float64(minTemperature),
 						float64(ad.Temperature.Max.Value),
 						b2,
 						BAR_WIDTH)
-					gpsTxt := col1(currentRecord.GpsAccuracy.Format()) +
-						col2(ad.GpsAccuracy.Max.Format())
-					gpsBar := HorizontalBar(
+					minGps := math.Min(float64(ad.GpsAccuracy.Min.Value), 0)
+					gpsTxt := col1("best "+common.NewGpsAccuracy(float32(minGps)).Format()) +
+						col2("worst "+ad.GpsAccuracy.Max.Format())
+					gpsBar := HorizontalBarWithRange(
 						float64(currentRecord.GpsAccuracy.Value),
 						b1,
+						float64(ad.GpsAccuracy.Min.Value),
 						float64(ad.GpsAccuracy.Max.Value),
 						b2,
 						BAR_WIDTH)
 
 					rows = [][]string{
-						{"time", timeTxt},
-						{"distance", distanceTxt},
-						{"", distanceBar},
-						{"duration", durationTxt},
-						{"", timeBar},
-						{"speed", speedTxt},
-						{"", speedBar},
-						{"altitude", altitudeTxt},
-						{"", altitudeBar},
-						{"temperature", temperatureTxt},
-						{"", temperatureBar},
-						{"gps accuracy", gpsTxt},
-						{"", gpsBar},
-						{"sessions", noSessionsText},
-						{"record", fmt.Sprint(act.RecordIndex()+1) + " of " + noRecordsText},
+						{th("time"), timeTxt},
+						{th("distance"), distanceTxt},
+						{currentRecord.Distance.Format3(), distanceBar},
+						{th("duration"), durationTxt},
+						{currentDuration.Format(), timeBar},
+						{th("speed"), speedTxt},
+						{currentRecord.Speed.Format(), speedBar},
+						{th("altitude"), altitudeTxt},
+						{currentRecord.Altitude.Format(), altitudeBar},
+						{th("temperature"), temperatureTxt},
+						{currentRecord.Temperature.Format(), temperatureBar},
+						{th("gps accuracy"), gpsTxt},
+						{currentRecord.GpsAccuracy.Format(), gpsBar},
+						{th("sessions"), noSessionsText},
+						{th("record"), fmt.Sprint(act.RecordIndex()+1) + " of " + noRecordsText},
 					}
 				} else {
 
@@ -622,7 +629,7 @@ func (m Model) RightContentView() string {
 						b2,
 						BAR_WIDTH)
 					gpsTxt := col1("⌀ "+ad.GpsAccuracy.Avg.Format()) +
-						col2("max "+ad.GpsAccuracy.Max.Format())
+						col2("worse "+ad.GpsAccuracy.Max.Format())
 					gpsBar := HorizontalBar(
 						float64(ad.GpsAccuracy.Avg.Value),
 						b1,
@@ -631,20 +638,20 @@ func (m Model) RightContentView() string {
 						BAR_WIDTH)
 
 					rows = [][]string{
-						{"date", dateTxt},
-						{"distance", totalDistance},
-						{"active", durationTxt},
+						{th("date"), dateTxt},
+						{th("distance"), totalDistance},
+						{th("active"), durationTxt},
 						{"", durationBar},
-						{"speed", speedTxt},
+						{th("speed"), speedTxt},
 						{"", speedBar},
-						{"elevation", elevationTxt},
+						{th("elevation"), elevationTxt},
 						{"", elevationBar},
-						{"temperature", temperatureTxt},
+						{th("temperature"), temperatureTxt},
 						{"", temperatureBar},
-						{"gps accuracy", gpsTxt},
+						{th("gps accuracy"), gpsTxt},
 						{"", gpsBar},
-						{"sessions", noSessionsText},
-						{"records", noRecordsText},
+						{th("sessions"), noSessionsText},
+						{th("records"), noRecordsText},
 					}
 				}
 
@@ -658,7 +665,7 @@ func (m Model) RightContentView() string {
 				StyleFunc(func(row, col int) lipgloss.Style {
 					switch {
 					case col == 0:
-						return lipgloss.NewStyle().Bold(true).PaddingRight(2)
+						return lipgloss.NewStyle().PaddingRight(2)
 					case !m.showLiveData && (row == 1 || row == 11):
 						return lipgloss.NewStyle().MarginBottom(2)
 					case m.showLiveData && (row == 2 || row == 12):
