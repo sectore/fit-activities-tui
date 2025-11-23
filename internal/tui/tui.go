@@ -540,9 +540,10 @@ func (m Model) RightContentView() string {
 					altitudeTxt := col1(currentRecord.Altitude.Format()) +
 						col2(ad.Altitude.Max.Format())
 
-					altitudeBar := HorizontalBar(
+					altitudeBar := HorizontalBarWithRange(
 						float64(currentRecord.Altitude.Value),
 						b1,
+						float64(ad.Altitude.Min.Value),
 						float64(ad.Altitude.Max.Value),
 						b2,
 						BAR_WIDTH)

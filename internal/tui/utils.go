@@ -89,40 +89,78 @@ func SortItems(items []list.Item, sort ActsSort) []list.Item {
 	return ActivitiesToListItems(acts)
 }
 
+// `HorizontalStackedBar` renders a horizontal bar chart with two stacked values.
+// It proportionally distributes `maxBlocks` between `value1` and `value2` based on their sum,
+// using rounding for accurate representation. If the total is zero or negative, the entire bar is `value1Block`.
+// Parameters:
+//   - `value1`: the first value (displayed first/left)
+//   - `value1Block`: character for the first value portion
+//   - `value2`: the second value (displayed second/right)
+//   - `value2Block`: character for the second value portion
+//   - `maxBlocks`: total number of blocks for the bar width
 func HorizontalStackedBar(value1 float64, value1Block string, value2 float64, value2Block string, maxBlocks int) string {
 	total := value1 + value2
+	// Handle edge case where total is 0 or negative
+	if total <= 0 {
+		return strings.Repeat(value1Block, maxBlocks)
+	}
+
 	value2Percent := value2 * float64(maxBlocks) / total
-	// use rounding instead of truncation for better proportional representation
+	// Use rounding instead of truncation for better proportional representation
 	noValue2Blocks := int(math.Round(value2Percent))
-	// adjust `noValue2Blocks` to show small values of `pauseValue` < 1
+
+	// Show at least one block if value2 is positive (even if very small)
 	if noValue2Blocks == 0 && value2 > 0 {
 		noValue2Blocks = 1
 	}
-	// adjust `noValue1Blocks` to be never < 0
-	// to avoid negative `Repeat` count
-	noValue1Blocks := math.Max(float64(maxBlocks-noValue2Blocks), 0)
-	return strings.Repeat(value1Block, int(noValue1Blocks)) +
+
+	// Ensure noValue2Blocks doesn't exceed maxBlocks (handles edge cases)
+	noValue2Blocks = min(noValue2Blocks, maxBlocks)
+	noValue1Blocks := maxBlocks - noValue2Blocks
+
+	return strings.Repeat(value1Block, noValue1Blocks) +
 		strings.Repeat(value2Block, noValue2Blocks)
 }
 
+// `HorizontalBar` is a convenience wrapper for `HorizontalBarWithRange` with `minValue` set to 0.
+// See `HorizontalBarWithRange` for detailed behavior.
 func HorizontalBar(value float64, fgBlock string, maxValue float64, bgBlock string, maxBlocks int) string {
-	maxBlocks_f64 := float64(maxBlocks)
-	noValueBlocks := value * maxBlocks_f64 / maxValue
-	// ensure noValueBlocks doesn't exceed maxBlocks
-	if noValueBlocks > maxBlocks_f64 {
-		noValueBlocks = maxBlocks_f64
+	return HorizontalBarWithRange(value, fgBlock, 0, maxValue, bgBlock, maxBlocks)
+}
+
+// `HorizontalBarWithRange` renders a horizontal bar chart that handles ranges including negative values.
+// It normalizes the `value` relative to the min-max range, clamping out-of-range values to the range bounds,
+// then renders the appropriate bar.
+// Parameters:
+//   - `value`: the current value to display
+//   - `fgBlock`: character to use for the foreground (filled) portion
+//   - `minValue`: minimum value of the range (handles negative values)
+//   - `maxValue`: maximum value of the range
+//   - `bgBlock`: character to use for the background (empty) portion
+//   - `maxBlocks`: total number of blocks for the bar width
+func HorizontalBarWithRange(value float64, fgBlock string, minValue float64, maxValue float64, bgBlock string, maxBlocks int) string {
+	// Calculate the range span
+	valueRange := maxValue - minValue
+
+	// Handle edge case where range is 0 or negative
+	if valueRange <= 0 {
+		return strings.Repeat(bgBlock, maxBlocks)
 	}
 
-	// avoid negative `Repeat` count
-	noValueBlocks = math.Max(float64(noValueBlocks), 0)
-	// re-adjust to show a block asap
-	if int(noValueBlocks) == 0 && value > 0 {
+	// Normalize value relative to the min-max range
+	normalizedValue := max(0, value-minValue)
+
+	// Calculate number of foreground blocks
+	maxBlocks_f64 := float64(maxBlocks)
+	noValueBlocks := normalizedValue * maxBlocks_f64 / valueRange
+
+	// Show at least one block if value is greater than minValue (even if very small)
+	if int(noValueBlocks) == 0 && normalizedValue > 0 {
 		noValueBlocks = 1
 	}
 
-	// convert to integer for foreground blocks
-	fgBlocks := int(noValueBlocks)
-	// calculate background blocks to ensure total equals maxBlocks
+	// Convert to integer and ensure it doesn't exceed maxBlocks
+	fgBlocks := min(int(noValueBlocks), maxBlocks)
 	bgBlocks := maxBlocks - fgBlocks
 
 	return strings.Repeat(fgBlock, fgBlocks) +

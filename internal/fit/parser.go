@@ -65,11 +65,22 @@ func ParseFile(file string) (*common.ActivityData, error) {
 	}
 	var gpsSum, gpsCount uint
 
+	altitudeStats := common.AltitudeStats{
+		Min: common.NewAltitude(0),
+		Max: common.NewAltitude(0),
+	}
+	var altitudeCount uint
+
 	for _, r := range act.Records {
 
-		attitudeValue := r.AltitudeScaled()
-		if math.IsNaN(attitudeValue) || math.Float64bits(attitudeValue) == basetype.Float64Invalid {
-			attitudeValue = 0
+		// Use `EnhancedAltitude` if available, otherwise fallback to `Altitude`
+		// This ensures compatibility (Garmin vs. Wahoo)
+		altitudeValue := r.EnhancedAltitudeScaled()
+		if math.Float64bits(altitudeValue) == basetype.Float64Invalid {
+			altitudeValue = r.AltitudeScaled()
+			if math.Float64bits(altitudeValue) == basetype.Float64Invalid {
+				altitudeValue = 0
+			}
 		}
 
 		temperature := r.Temperature
@@ -82,9 +93,14 @@ func ParseFile(file string) (*common.ActivityData, error) {
 			distance = 0
 		}
 
-		speed := r.Speed
-		if speed == basetype.Uint16Invalid {
-			speed = 0
+		// Use `EnhancedSpeed` if available, otherwise fallback to `Speed`
+		// This ensures compatibility (Garmin: `EnhancedSpeed`, Wahoo: both)
+		speed := r.EnhancedSpeed
+		if speed == basetype.Uint32Invalid {
+			speed = uint32(r.Speed)
+			if r.Speed == basetype.Uint16Invalid {
+				speed = 0
+			}
 		}
 
 		gpsAccuracy := r.GpsAccuracy
@@ -97,21 +113,18 @@ func ParseFile(file string) (*common.ActivityData, error) {
 			Distance:    common.NewDistance(distance),
 			Speed:       common.NewSpeed(float32(speed)),
 			Temperature: common.NewTemperature(float32(temperature)),
-			Altitude:    common.NewAltitude(attitudeValue),
+			Altitude:    common.NewAltitude(altitudeValue),
 			GpsAccuracy: common.NewGpsAccuracy(float32(gpsAccuracy)),
 		}
 		records = append(records, record)
 
 		// Speed stats calculation
-		speedValue := r.Speed
-		if speedValue != basetype.Uint16Invalid {
-			speedValue_f := float32(r.Speed)
-			if speedStats.Max.Value < speedValue_f {
-				speedStats.Max.Value = speedValue_f
-			}
-			speedCount += 1
-			speedTotal += uint(speedValue)
+		speed_f := float32(speed)
+		if speedStats.Max.Value < speed_f {
+			speedStats.Max.Value = speed_f
 		}
+		speedCount += 1
+		speedTotal += uint(speed)
 
 		// Calculate speed average
 		if speedCount > 0 {
@@ -163,6 +176,21 @@ func ParseFile(file string) (*common.ActivityData, error) {
 			gpsCount += 1
 			gpsSum += uint(gpsValue)
 		}
+
+		// Altitude stats calculation
+		// Note: Since `altitudeValue` is already validated above
+		// we don't check for invalid values here
+		if altitudeCount == 0 {
+			altitudeStats.Min.Value = altitudeValue
+			altitudeStats.Max.Value = altitudeValue
+		}
+		if altitudeValue < altitudeStats.Min.Value {
+			altitudeStats.Min.Value = altitudeValue
+		}
+		if altitudeValue > altitudeStats.Max.Value {
+			altitudeStats.Max.Value = altitudeValue
+		}
+		altitudeCount += 1
 	}
 
 	// Calculate GPS accuracy average
@@ -179,10 +207,6 @@ func ParseFile(file string) (*common.ActivityData, error) {
 	elevationStats := common.ElevationStats{
 		Ascents:  common.NewElevation(0),
 		Descents: common.NewElevation(0),
-	}
-	altitudeStats := common.AltitudeStats{
-		Min: common.NewAltitude(0),
-		Max: common.NewAltitude(0),
 	}
 
 	for _, s := range act.Sessions {
@@ -206,16 +230,6 @@ func ParseFile(file string) (*common.ActivityData, error) {
 		descentValue := s.TotalDescent
 		if descentValue != basetype.Uint16Invalid {
 			elevationStats.Descents.Value += descentValue
-		}
-
-		minAltitudeValue := s.MinAltitudeScaled()
-		if !math.IsNaN(minAltitudeValue) && math.Float64bits(minAltitudeValue) != basetype.Float64Invalid {
-			altitudeStats.Min.Value = minAltitudeValue
-		}
-
-		maxAltitudeValue := s.MaxAltitudeScaled()
-		if !math.IsNaN(maxAltitudeValue) && math.Float64bits(minAltitudeValue) != basetype.Float64Invalid {
-			altitudeStats.Max.Value = maxAltitudeValue
 		}
 	}
 	// calculate pause
