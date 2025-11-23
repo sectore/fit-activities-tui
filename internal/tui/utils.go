@@ -89,6 +89,15 @@ func SortItems(items []list.Item, sort ActsSort) []list.Item {
 	return ActivitiesToListItems(acts)
 }
 
+// `HorizontalStackedBar` renders a horizontal bar chart with two stacked values.
+// It proportionally distributes `maxBlocks` between `value1` and `value2` based on their sum,
+// using rounding for accurate representation. If the total is zero or negative, the entire bar is `value1Block`.
+// Parameters:
+//   - `value1`: the first value (displayed first/left)
+//   - `value1Block`: character for the first value portion
+//   - `value2`: the second value (displayed second/right)
+//   - `value2Block`: character for the second value portion
+//   - `maxBlocks`: total number of blocks for the bar width
 func HorizontalStackedBar(value1 float64, value1Block string, value2 float64, value2Block string, maxBlocks int) string {
 	total := value1 + value2
 	// Handle edge case where total is 0 or negative
@@ -113,19 +122,22 @@ func HorizontalStackedBar(value1 float64, value1Block string, value2 float64, va
 		strings.Repeat(value2Block, noValue2Blocks)
 }
 
+// `HorizontalBar` is a convenience wrapper for `HorizontalBarWithRange` with `minValue` set to 0.
+// See `HorizontalBarWithRange` for detailed behavior.
 func HorizontalBar(value float64, fgBlock string, maxValue float64, bgBlock string, maxBlocks int) string {
 	return HorizontalBarWithRange(value, fgBlock, 0, maxValue, bgBlock, maxBlocks)
 }
 
-// HorizontalBarWithRange renders a horizontal bar chart that handles ranges including negative values.
-// It normalizes the value relative to the min-max range, then renders the appropriate bar.
+// `HorizontalBarWithRange` renders a horizontal bar chart that handles ranges including negative values.
+// It normalizes the `value` relative to the min-max range, clamping out-of-range values to the range bounds,
+// then renders the appropriate bar.
 // Parameters:
-//   - value: the current value to display
-//   - fgBlock: character to use for the foreground (filled) portion
-//   - minValue: minimum value of the range (handles negative values)
-//   - maxValue: maximum value of the range
-//   - bgBlock: character to use for the background (empty) portion
-//   - maxBlocks: total number of blocks for the bar width
+//   - `value`: the current value to display
+//   - `fgBlock`: character to use for the foreground (filled) portion
+//   - `minValue`: minimum value of the range (handles negative values)
+//   - `maxValue`: maximum value of the range
+//   - `bgBlock`: character to use for the background (empty) portion
+//   - `maxBlocks`: total number of blocks for the bar width
 func HorizontalBarWithRange(value float64, fgBlock string, minValue float64, maxValue float64, bgBlock string, maxBlocks int) string {
 	// Calculate the range span
 	valueRange := maxValue - minValue
