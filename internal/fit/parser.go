@@ -73,13 +73,12 @@ func ParseFile(file string) (*common.ActivityData, error) {
 
 	for _, r := range act.Records {
 
-		// Use EnhancedAltitude if available, otherwise fallback to Altitude
-		// This ensures compatibility with Garmin (uses EnhancedAltitude in records)
-		// Note: Wahoo devices don't populate per-record altitude, only session-level altitude
+		// Use `EnhancedAltitude` if available, otherwise fallback to `Altitude`
+		// This ensures compatibility (Garmin vs. Wahoo)
 		altitudeValue := r.EnhancedAltitudeScaled()
-		if math.IsNaN(altitudeValue) || math.Float64bits(altitudeValue) == basetype.Float64Invalid {
+		if math.Float64bits(altitudeValue) == basetype.Float64Invalid {
 			altitudeValue = r.AltitudeScaled()
-			if math.IsNaN(altitudeValue) || math.Float64bits(altitudeValue) == basetype.Float64Invalid {
+			if math.Float64bits(altitudeValue) == basetype.Float64Invalid {
 				altitudeValue = 0
 			}
 		}
@@ -95,7 +94,7 @@ func ParseFile(file string) (*common.ActivityData, error) {
 		}
 
 		// Use `EnhancedSpeed` if available, otherwise fallback to `Speed`
-		// This ensures compatibility with both Garmin (uses EnhancedSpeed) and Wahoo (uses both)
+		// This ensures compatibility (Garmin: `EnhancedSpeed`, Wahoo: both)
 		speed := r.EnhancedSpeed
 		if speed == basetype.Uint32Invalid {
 			speed = uint32(r.Speed)
@@ -179,8 +178,8 @@ func ParseFile(file string) (*common.ActivityData, error) {
 		}
 
 		// Altitude stats calculation
-		// Note: We don't check for invalid values here
-		// since `altitudeValue` is already validated above
+		// Note: Since `altitudeValue` is already validated above
+		// we don't check for invalid values here
 		if altitudeCount == 0 {
 			altitudeStats.Min.Value = altitudeValue
 			altitudeStats.Max.Value = altitudeValue
