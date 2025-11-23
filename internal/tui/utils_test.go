@@ -71,6 +71,51 @@ func TestHorizontalStackedBar(t *testing.T) {
 			maxBlocks:   8,
 			expected:    "▒▒▒▒░░░░", // Should be 4 and 4, but current gives 5 and 3 due to truncation
 		},
+		{
+			name:        "both values are zero",
+			value1:      0,
+			value1Block: "▒",
+			value2:      0,
+			value2Block: "░",
+			maxBlocks:   10,
+			expected:    "▒▒▒▒▒▒▒▒▒▒", // Returns value1Block when total <= 0
+		},
+		{
+			name:        "negative total",
+			value1:      -10,
+			value1Block: "▒",
+			value2:      -5,
+			value2Block: "░",
+			maxBlocks:   10,
+			expected:    "▒▒▒▒▒▒▒▒▒▒", // Returns value1Block when total <= 0
+		},
+		{
+			name:        "very small value2 shows one block",
+			value1:      1000,
+			value1Block: "▒",
+			value2:      0.5,
+			value2Block: "░",
+			maxBlocks:   10,
+			expected:    "▒▒▒▒▒▒▒▒▒░", // value2 is tiny but positive, should show 1 block
+		},
+		{
+			name:        "only value2 is positive",
+			value1:      0,
+			value1Block: "▒",
+			value2:      100,
+			value2Block: "░",
+			maxBlocks:   10,
+			expected:    "░░░░░░░░░░", // All blocks should be value2
+		},
+		{
+			name:        "value1 negative, value2 positive, total positive",
+			value1:      -10,
+			value1Block: "▒",
+			value2:      50,
+			value2Block: "░",
+			maxBlocks:   10,
+			expected:    "░░░░░░░░░░", // value2 makes up 125% of total (50/40), clamped to maxBlocks
+		},
 	}
 
 	for _, tt := range tests {
@@ -239,6 +284,140 @@ func TestHorizontalBar(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := HorizontalBar(tt.value, tt.fgBlock, tt.maxValue, tt.bgBlock, tt.maxBlocks)
+
+			if result != tt.expected {
+				t.Errorf("Expected:\n%s\nGot:\n%s", tt.expected, result)
+			}
+		})
+	}
+}
+
+func TestHorizontalBarWithRange(t *testing.T) {
+	tests := []struct {
+		name      string
+		value     float64
+		fgBlock   string
+		minValue  float64
+		maxValue  float64
+		bgBlock   string
+		maxBlocks int
+		expected  string
+	}{
+		{
+			name:      "normal case with positive range - 50%",
+			value:     50,
+			fgBlock:   "█",
+			minValue:  0,
+			maxValue:  100,
+			bgBlock:   "░",
+			maxBlocks: 10,
+			expected:  "█████░░░░░",
+		},
+		{
+			name:      "altitude with negative values - at minimum",
+			value:     -100,
+			fgBlock:   "█",
+			minValue:  -100,
+			maxValue:  500,
+			bgBlock:   "░",
+			maxBlocks: 10,
+			expected:  "░░░░░░░░░░",
+		},
+		{
+			name:      "altitude with negative values - at maximum",
+			value:     500,
+			fgBlock:   "█",
+			minValue:  -100,
+			maxValue:  500,
+			bgBlock:   "░",
+			maxBlocks: 10,
+			expected:  "██████████",
+		},
+		{
+			name:      "altitude with negative values - middle of range",
+			value:     200,
+			fgBlock:   "█",
+			minValue:  -100,
+			maxValue:  500,
+			bgBlock:   "░",
+			maxBlocks: 10,
+			expected:  "█████░░░░░",
+		},
+		{
+			name:      "altitude with negative values - just above minimum",
+			value:     -50,
+			fgBlock:   "█",
+			minValue:  -100,
+			maxValue:  500,
+			bgBlock:   "░",
+			maxBlocks: 10,
+			expected:  "█░░░░░░░░░",
+		},
+		{
+			name:      "all negative range - at minimum",
+			value:     -500,
+			fgBlock:   "█",
+			minValue:  -500,
+			maxValue:  -100,
+			bgBlock:   "░",
+			maxBlocks: 10,
+			expected:  "░░░░░░░░░░",
+		},
+		{
+			name:      "all negative range - at maximum",
+			value:     -100,
+			fgBlock:   "█",
+			minValue:  -500,
+			maxValue:  -100,
+			bgBlock:   "░",
+			maxBlocks: 10,
+			expected:  "██████████",
+		},
+		{
+			name:      "all negative range - middle",
+			value:     -300,
+			fgBlock:   "█",
+			minValue:  -500,
+			maxValue:  -100,
+			bgBlock:   "░",
+			maxBlocks: 10,
+			expected:  "█████░░░░░",
+		},
+		{
+			name:      "value below minimum - should clamp to minimum",
+			value:     -200,
+			fgBlock:   "█",
+			minValue:  -100,
+			maxValue:  500,
+			bgBlock:   "░",
+			maxBlocks: 10,
+			expected:  "░░░░░░░░░░",
+		},
+		{
+			name:      "value above maximum - should clamp to maximum",
+			value:     600,
+			fgBlock:   "█",
+			minValue:  -100,
+			maxValue:  500,
+			bgBlock:   "░",
+			maxBlocks: 10,
+			expected:  "██████████",
+		},
+		{
+			name:      "small positive value in negative range shows block",
+			value:     -99,
+			fgBlock:   "▒",
+			minValue:  -100,
+			maxValue:  500,
+			bgBlock:   "░",
+			maxBlocks: 50,
+			expected:  "▒░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := HorizontalBarWithRange(tt.value, tt.fgBlock, tt.minValue, tt.maxValue, tt.bgBlock, tt.maxBlocks)
 
 			if result != tt.expected {
 				t.Errorf("Expected:\n%s\nGot:\n%s", tt.expected, result)

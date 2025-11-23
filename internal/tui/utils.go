@@ -91,52 +91,64 @@ func SortItems(items []list.Item, sort ActsSort) []list.Item {
 
 func HorizontalStackedBar(value1 float64, value1Block string, value2 float64, value2Block string, maxBlocks int) string {
 	total := value1 + value2
-	// handle edge case where total is 0 or negative
+	// Handle edge case where total is 0 or negative
 	if total <= 0 {
 		return strings.Repeat(value1Block, maxBlocks)
 	}
 
 	value2Percent := value2 * float64(maxBlocks) / total
-	// use rounding instead of truncation for better proportional representation
+	// Use rounding instead of truncation for better proportional representation
 	noValue2Blocks := int(math.Round(value2Percent))
-	// adjust `noValue2Blocks` to show small values of `pauseValue` < 1
+
+	// Show at least one block if value2 is positive (even if very small)
 	if noValue2Blocks == 0 && value2 > 0 {
 		noValue2Blocks = 1
 	}
-	// adjust `noValue2Blocks` to not exceed maxBlocks
-	if noValue2Blocks > maxBlocks {
-		noValue2Blocks = maxBlocks
-	}
-	// calculate noValue1Blocks ensuring it's never negative
+
+	// Ensure noValue2Blocks doesn't exceed maxBlocks (handles edge cases)
+	noValue2Blocks = min(noValue2Blocks, maxBlocks)
 	noValue1Blocks := maxBlocks - noValue2Blocks
+
 	return strings.Repeat(value1Block, noValue1Blocks) +
 		strings.Repeat(value2Block, noValue2Blocks)
 }
 
 func HorizontalBar(value float64, fgBlock string, maxValue float64, bgBlock string, maxBlocks int) string {
-	// handle edge case where maxValue is 0 or negative
-	if maxValue <= 0 {
+	return HorizontalBarWithRange(value, fgBlock, 0, maxValue, bgBlock, maxBlocks)
+}
+
+// HorizontalBarWithRange renders a horizontal bar chart that handles ranges including negative values.
+// It normalizes the value relative to the min-max range, then renders the appropriate bar.
+// Parameters:
+//   - value: the current value to display
+//   - fgBlock: character to use for the foreground (filled) portion
+//   - minValue: minimum value of the range (handles negative values)
+//   - maxValue: maximum value of the range
+//   - bgBlock: character to use for the background (empty) portion
+//   - maxBlocks: total number of blocks for the bar width
+func HorizontalBarWithRange(value float64, fgBlock string, minValue float64, maxValue float64, bgBlock string, maxBlocks int) string {
+	// Calculate the range span
+	valueRange := maxValue - minValue
+
+	// Handle edge case where range is 0 or negative
+	if valueRange <= 0 {
 		return strings.Repeat(bgBlock, maxBlocks)
 	}
 
+	// Normalize value relative to the min-max range
+	normalizedValue := max(0, value-minValue)
+
+	// Calculate number of foreground blocks
 	maxBlocks_f64 := float64(maxBlocks)
-	noValueBlocks := value * maxBlocks_f64 / maxValue
+	noValueBlocks := normalizedValue * maxBlocks_f64 / valueRange
 
-	// ensure noValueBlocks is valid and doesn't exceed maxBlocks
-	if math.IsNaN(noValueBlocks) || math.IsInf(noValueBlocks, 0) || noValueBlocks < 0 {
-		noValueBlocks = 0
-	} else if noValueBlocks > maxBlocks_f64 {
-		noValueBlocks = maxBlocks_f64
-	}
-
-	// re-adjust to show a block asap
-	if int(noValueBlocks) == 0 && value > 0 {
+	// Show at least one block if value is greater than minValue (even if very small)
+	if int(noValueBlocks) == 0 && normalizedValue > 0 {
 		noValueBlocks = 1
 	}
 
-	// convert to integer for foreground blocks, ensuring it doesn't exceed maxBlocks
+	// Convert to integer and ensure it doesn't exceed maxBlocks
 	fgBlocks := min(int(noValueBlocks), maxBlocks)
-	// calculate background blocks to ensure total equals maxBlocks
 	bgBlocks := maxBlocks - fgBlocks
 
 	return strings.Repeat(fgBlock, fgBlocks) +
