@@ -513,26 +513,28 @@ func (m Model) RightContentView() string {
 
 				if m.showLiveData {
 					timeTxt := currentRecord.Time.FormatDate() + " " + currentRecord.Time.FormatHhMmSs()
+
 					distanceTxt := col1("start") +
-						col2("finish "+ad.TotalDistance.Format3())
+						col2("finish")
 					distanceBar := HorizontalBar(
 						float64(currentRecord.Distance.Value),
 						b1,
 						float64(ad.TotalDistance.Value),
 						b2,
 						BAR_WIDTH)
+
 					currentDuration := TimeToDuration(ad.StartTime(), currentRecord.Time)
 					finalDuration := TimeToDuration(ad.StartTime(), ad.FinishTime())
 					durationTxt := col1("start") +
-						col2("finish "+finalDuration.Format())
-					timeBar := HorizontalBar(
+						col2("finish")
+					durationBar := HorizontalBar(
 						float64(currentDuration.Value),
 						b1,
 						float64(finalDuration.Value),
 						b2,
 						BAR_WIDTH)
-					speedTxt := col1("min "+common.NewSpeed(0).Format()) +
-						col2("max "+ad.Speed.Max.Format())
+					speedTxt := col1("min") +
+						col2("max")
 					speedBar := HorizontalBar(
 						float64(currentRecord.Speed.Value),
 						b1,
@@ -541,33 +543,33 @@ func (m Model) RightContentView() string {
 						BAR_WIDTH)
 
 					minAltitude := math.Min(float64(ad.Altitude.Min.Value), 0)
-					altitudeTxt := col1("min "+common.NewAltitude(minAltitude).Format()) +
-						col2("max "+ad.Altitude.Max.Format())
+					altitudeTxt := col1("min") +
+						col2("max")
 					altitudeBar := HorizontalBarWithRange(
 						float64(currentRecord.Altitude.Value),
 						b1,
-						float64(ad.Altitude.Min.Value),
+						minAltitude,
 						float64(ad.Altitude.Max.Value),
 						b2,
 						BAR_WIDTH)
 
 					minTemperature := math.Min(float64(ad.Temperature.Min.Value), 0)
-					temperatureTxt := col1("min "+common.NewTemperature(float32(minTemperature)).Format()) +
-						col2("max "+ad.Temperature.Max.Format())
+					temperatureTxt := col1("min") +
+						col2("max")
 					temperatureBar := HorizontalBarWithRange(
 						float64(currentRecord.Temperature.Value),
 						b1,
-						float64(minTemperature),
+						minTemperature,
 						float64(ad.Temperature.Max.Value),
 						b2,
 						BAR_WIDTH)
 					minGps := math.Min(float64(ad.GpsAccuracy.Min.Value), 0)
-					gpsTxt := col1("best "+common.NewGpsAccuracy(float32(minGps)).Format()) +
-						col2("worst "+ad.GpsAccuracy.Max.Format())
+					gpsTxt := col1("best") +
+						col2("worst")
 					gpsBar := HorizontalBarWithRange(
 						float64(currentRecord.GpsAccuracy.Value),
 						b1,
-						float64(ad.GpsAccuracy.Min.Value),
+						minGps,
 						float64(ad.GpsAccuracy.Max.Value),
 						b2,
 						BAR_WIDTH)
@@ -577,7 +579,7 @@ func (m Model) RightContentView() string {
 						{th("distance"), distanceTxt},
 						{currentRecord.Distance.Format3(), distanceBar},
 						{th("duration"), durationTxt},
-						{currentDuration.Format(), timeBar},
+						{currentDuration.Format(), durationBar},
 						{th("speed"), speedTxt},
 						{currentRecord.Speed.Format(), speedBar},
 						{th("altitude"), altitudeTxt},
