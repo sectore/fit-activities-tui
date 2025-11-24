@@ -573,16 +573,20 @@ func (m Model) RightContentView() string {
 						float64(ad.GpsAccuracy.Max.Value),
 						b2,
 						BAR_WIDTH)
-					minHeartrate := math.Min(float64(ad.Heartrate.Min.Value), 0)
-					heartrateTxt := col1("min") +
-						col2("max")
-					heartrateBar := HorizontalBarWithRange(
-						float64(currentRecord.Heartrate.Value),
-						b1,
-						minHeartrate,
-						float64(ad.Heartrate.Max.Value),
-						b2,
-						BAR_WIDTH)
+					heartrateTxt := col1("min") + col2("max")
+					heartrateBar := HorizontalBar(0, b1, 0, b2, BAR_WIDTH)
+					currentHeartrateTxt := "no data"
+					if ad.Heartrate.Min != nil && ad.Heartrate.Max != nil && currentRecord.Heartrate != nil {
+						minHeartrate := math.Min(float64(ad.Heartrate.Min.Value), 0)
+						heartrateBar = HorizontalBarWithRange(
+							float64(currentRecord.Heartrate.Value),
+							b1,
+							minHeartrate,
+							float64(ad.Heartrate.Max.Value),
+							b2,
+							BAR_WIDTH)
+						currentHeartrateTxt = currentRecord.Heartrate.Format()
+					}
 
 					rows = [][]string{
 						{th("time"), timeTxt},
@@ -598,8 +602,8 @@ func (m Model) RightContentView() string {
 						{currentRecord.Temperature.Format(), temperatureBar},
 						{th("gps accuracy"), gpsTxt},
 						{currentRecord.GpsAccuracy.Format(), gpsBar},
-						{th("♥"), heartrateTxt},
-						{currentRecord.Heartrate.Format(), heartrateBar},
+						{th("♥rate"), heartrateTxt},
+						{currentHeartrateTxt, heartrateBar},
 						{th("sessions"), noSessionsText},
 						{th("record"), fmt.Sprint(act.RecordIndex()+1) + " of " + noRecordsText},
 					}
@@ -650,14 +654,18 @@ func (m Model) RightContentView() string {
 						float64(ad.GpsAccuracy.Max.Value),
 						b2,
 						BAR_WIDTH)
-					heartrateTxt := col1("⌀ "+ad.Heartrate.Avg.Format()) +
-						col2("max "+ad.Heartrate.Max.Format())
-					heartrateBar := HorizontalBar(
-						float64(ad.Heartrate.Avg.Value),
-						b1,
-						float64(ad.Heartrate.Max.Value),
-						b2,
-						BAR_WIDTH)
+					heartrateTxt := "no data"
+					heartrateBar := HorizontalBar(0, b1, 0, b2, BAR_WIDTH)
+					if ad.Heartrate.Avg != nil && ad.Heartrate.Max != nil {
+						heartrateTxt = col1("⌀ "+ad.Heartrate.Avg.Format()) +
+							col2("max "+ad.Heartrate.Max.Format())
+						heartrateBar = HorizontalBar(
+							float64(ad.Heartrate.Avg.Value),
+							b1,
+							float64(ad.Heartrate.Max.Value),
+							b2,
+							BAR_WIDTH)
+					}
 
 					rows = [][]string{
 						{th("date"), dateTxt},
@@ -672,7 +680,7 @@ func (m Model) RightContentView() string {
 						{"", temperatureBar},
 						{th("gps accuracy"), gpsTxt},
 						{"", gpsBar},
-						{th("♥"), heartrateTxt},
+						{th("♥rate"), heartrateTxt},
 						{"", heartrateBar},
 						{th("sessions"), noSessionsText},
 						{th("records"), noRecordsText},

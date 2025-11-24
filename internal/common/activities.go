@@ -188,20 +188,23 @@ func (d Distance) format(decimal int) string {
 	}
 }
 
-type Heartrate struct{ Value float32 }
+type Heartrate struct{ Value uint8 }
 
-func NewHeartrate(value float32) Heartrate {
-	return Heartrate{Value: value}
+func NewHeartrate(value uint8) *Heartrate {
+	return &Heartrate{Value: value}
 }
 
-func (e Heartrate) Format() string {
-	return fmt.Sprintf("%.fbpm", e.Value)
+func (hr *Heartrate) Format() string {
+	if hr == nil {
+		return "no data"
+	}
+	return fmt.Sprintf("%dbpm", hr.Value)
 }
 
 type HeartrateStats struct {
-	Min Heartrate
-	Max Heartrate
-	Avg Heartrate
+	Min *Heartrate
+	Max *Heartrate
+	Avg *Heartrate
 }
 
 type RecordData struct {
@@ -211,7 +214,7 @@ type RecordData struct {
 	Temperature Temperature
 	GpsAccuracy GpsAccuracy
 	Altitude    Altitude
-	Heartrate   Heartrate
+	Heartrate   *Heartrate
 }
 
 type ActivityData struct {
