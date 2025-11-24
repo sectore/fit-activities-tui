@@ -573,6 +573,16 @@ func (m Model) RightContentView() string {
 						float64(ad.GpsAccuracy.Max.Value),
 						b2,
 						BAR_WIDTH)
+					minHeartrate := math.Min(float64(ad.Heartrate.Min.Value), 0)
+					heartrateTxt := col1("min") +
+						col2("max")
+					heartrateBar := HorizontalBarWithRange(
+						float64(currentRecord.Heartrate.Value),
+						b1,
+						minHeartrate,
+						float64(ad.Heartrate.Max.Value),
+						b2,
+						BAR_WIDTH)
 
 					rows = [][]string{
 						{th("time"), timeTxt},
@@ -588,6 +598,8 @@ func (m Model) RightContentView() string {
 						{currentRecord.Temperature.Format(), temperatureBar},
 						{th("gps accuracy"), gpsTxt},
 						{currentRecord.GpsAccuracy.Format(), gpsBar},
+						{th("♥"), heartrateTxt},
+						{currentRecord.Heartrate.Format(), heartrateBar},
 						{th("sessions"), noSessionsText},
 						{th("record"), fmt.Sprint(act.RecordIndex()+1) + " of " + noRecordsText},
 					}
@@ -638,6 +650,14 @@ func (m Model) RightContentView() string {
 						float64(ad.GpsAccuracy.Max.Value),
 						b2,
 						BAR_WIDTH)
+					heartrateTxt := col1("⌀ "+ad.Heartrate.Avg.Format()) +
+						col2("max "+ad.Heartrate.Max.Format())
+					heartrateBar := HorizontalBar(
+						float64(ad.Heartrate.Avg.Value),
+						b1,
+						float64(ad.Heartrate.Max.Value),
+						b2,
+						BAR_WIDTH)
 
 					rows = [][]string{
 						{th("date"), dateTxt},
@@ -652,6 +672,8 @@ func (m Model) RightContentView() string {
 						{"", temperatureBar},
 						{th("gps accuracy"), gpsTxt},
 						{"", gpsBar},
+						{th("♥"), heartrateTxt},
+						{"", heartrateBar},
 						{th("sessions"), noSessionsText},
 						{th("records"), noRecordsText},
 					}
@@ -668,9 +690,9 @@ func (m Model) RightContentView() string {
 					switch {
 					case col == 0:
 						return lipgloss.NewStyle().PaddingRight(2)
-					case !m.showLiveData && (row == 1 || row == 11):
+					case !m.showLiveData && (row == 1 || row == 13):
 						return lipgloss.NewStyle().MarginBottom(2)
-					case m.showLiveData && (row == 2 || row == 12):
+					case m.showLiveData && (row == 2 || row == 14):
 						return lipgloss.NewStyle().MarginBottom(2)
 					default:
 						return lipgloss.NewStyle().PaddingRight(1)

@@ -71,6 +71,13 @@ func ParseFile(file string) (*common.ActivityData, error) {
 	}
 	var altitudeCount uint
 
+	heartrateStats := common.HeartrateStats{
+		Min: common.NewHeartrate(0),
+		Max: common.NewHeartrate(0),
+		Avg: common.NewHeartrate(0),
+	}
+	var heartrateSum, heartrateCount uint
+
 	for _, r := range act.Records {
 
 		// Use `EnhancedAltitude` if available, otherwise fallback to `Altitude`
@@ -108,6 +115,11 @@ func ParseFile(file string) (*common.ActivityData, error) {
 			gpsAccuracy = 0
 		}
 
+		heartrate := r.HeartRate
+		if heartrate == basetype.Uint8Invalid {
+			heartrate = 0
+		}
+
 		record := common.RecordData{
 			Time:        common.NewTime(r.Timestamp.Local()),
 			Distance:    common.NewDistance(distance),
@@ -115,6 +127,7 @@ func ParseFile(file string) (*common.ActivityData, error) {
 			Temperature: common.NewTemperature(float32(temperature)),
 			Altitude:    common.NewAltitude(altitudeValue),
 			GpsAccuracy: common.NewGpsAccuracy(float32(gpsAccuracy)),
+			Heartrate:   common.NewHeartrate(float32(heartrate)),
 		}
 		records = append(records, record)
 
@@ -191,11 +204,36 @@ func ParseFile(file string) (*common.ActivityData, error) {
 			altitudeStats.Max.Value = altitudeValue
 		}
 		altitudeCount += 1
+
+		// `Heartrate` stats calculation
+		heartrateValue := r.HeartRate
+		if heartrateValue != basetype.Uint8Invalid {
+			heartrateValue_f := float32(heartrateValue)
+			// heartrateoverride default zero value
+			if heartrateCount == 0 {
+				heartrateStats.Min.Value = heartrateValue_f
+			}
+			// compare min
+			if heartrateValue_f < heartrateStats.Min.Value {
+				heartrateStats.Min.Value = heartrateValue_f
+			}
+			// compare max
+			if heartrateValue_f > heartrateStats.Max.Value {
+				heartrateStats.Max.Value = heartrateValue_f
+			}
+			heartrateCount += 1
+			heartrateSum += uint(heartrateValue)
+		}
 	}
 
 	// Calculate GPS accuracy average
 	if gpsCount > 0 {
 		gpsAccuracyStats.Avg.Value = float32(gpsSum / gpsCount)
+	}
+
+	// Calculate `Heartrate` average
+	if heartrateCount > 0 {
+		heartrateStats.Avg.Value = float32(heartrateSum / heartrateCount)
 	}
 
 	totalDistance := common.NewDistance(0)
@@ -245,6 +283,7 @@ func ParseFile(file string) (*common.ActivityData, error) {
 		Records:       records,
 		GpsAccuracy:   gpsAccuracyStats,
 		Altitude:      altitudeStats,
+		Heartrate:     heartrateStats,
 	}
 
 	return activityData, nil
