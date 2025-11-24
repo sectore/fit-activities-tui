@@ -71,6 +71,9 @@ func ParseFile(file string) (*common.ActivityData, error) {
 	}
 	var altitudeCount uint
 
+	heartrateStats := common.HeartrateStats{}
+	var heartrateSum, heartrateCount uint
+
 	for _, r := range act.Records {
 
 		// Use `EnhancedAltitude` if available, otherwise fallback to `Altitude`
@@ -108,6 +111,27 @@ func ParseFile(file string) (*common.ActivityData, error) {
 			gpsAccuracy = 0
 		}
 
+		var heartrate *common.Heartrate
+		if r.HeartRate != basetype.Uint8Invalid {
+			heartrate = common.NewHeartrate(r.HeartRate)
+			// `Heartrate` stats calculation
+			// initialize min/max on first valid heartrate
+			if heartrateCount == 0 {
+				heartrateStats.Min = heartrate
+				heartrateStats.Max = heartrate
+			}
+			// compare min
+			if heartrate.Value < heartrateStats.Min.Value {
+				heartrateStats.Min = heartrate
+			}
+			// compare max
+			if heartrate.Value > heartrateStats.Max.Value {
+				heartrateStats.Max = heartrate
+			}
+			heartrateCount += 1
+			heartrateSum += uint(r.HeartRate)
+		}
+
 		record := common.RecordData{
 			Time:        common.NewTime(r.Timestamp.Local()),
 			Distance:    common.NewDistance(distance),
@@ -115,6 +139,7 @@ func ParseFile(file string) (*common.ActivityData, error) {
 			Temperature: common.NewTemperature(float32(temperature)),
 			Altitude:    common.NewAltitude(altitudeValue),
 			GpsAccuracy: common.NewGpsAccuracy(float32(gpsAccuracy)),
+			Heartrate:   heartrate,
 		}
 		records = append(records, record)
 
@@ -191,11 +216,18 @@ func ParseFile(file string) (*common.ActivityData, error) {
 			altitudeStats.Max.Value = altitudeValue
 		}
 		altitudeCount += 1
+
 	}
 
 	// Calculate GPS accuracy average
 	if gpsCount > 0 {
 		gpsAccuracyStats.Avg.Value = float32(gpsSum / gpsCount)
+	}
+
+	// Calculate `Heartrate` average
+	if heartrateCount > 0 {
+		heartrateStats.Avg = common.NewHeartrate(uint8(float32(heartrateSum) / float32(heartrateCount)))
+
 	}
 
 	totalDistance := common.NewDistance(0)
@@ -245,6 +277,7 @@ func ParseFile(file string) (*common.ActivityData, error) {
 		Records:       records,
 		GpsAccuracy:   gpsAccuracyStats,
 		Altitude:      altitudeStats,
+		Heartrate:     heartrateStats,
 	}
 
 	return activityData, nil
