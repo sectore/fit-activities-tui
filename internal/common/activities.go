@@ -10,6 +10,10 @@ import (
 	"github.com/sectore/fit-activities-tui/internal/asyncdata"
 )
 
+const (
+	NoDataText = "no data"
+)
+
 type Time struct{ Value time.Time }
 
 func NewTime(value time.Time) Time {
@@ -46,18 +50,21 @@ type TemperatureStats struct {
 	Avg, Min, Max Temperature
 }
 
-type GpsAccuracy struct{ Value float32 }
+type GpsAccuracy struct{ Value uint8 }
 
-func NewGpsAccuracy(value float32) GpsAccuracy {
-	return GpsAccuracy{Value: value}
+func NewGpsAccuracy(value uint8) *GpsAccuracy {
+	return &GpsAccuracy{Value: value}
 }
 
-func (ga GpsAccuracy) Format() string {
-	return fmt.Sprintf("%.0fm", ga.Value)
+func (ga *GpsAccuracy) Format() string {
+	if ga == nil {
+		return NoDataText
+	}
+	return fmt.Sprintf("%dm", ga.Value)
 }
 
 type GpsAccuracyStats struct {
-	Avg, Min, Max GpsAccuracy
+	Avg, Min, Max *GpsAccuracy
 }
 
 type Speed struct{ Value float32 }
@@ -83,9 +90,7 @@ func NewDuration(value uint32) Duration {
 }
 
 type DurationStats struct {
-	Total  Duration
-	Active Duration
-	Pause  Duration
+	Total, Active, Pause Duration
 }
 
 func (time Duration) Format() string {
@@ -124,8 +129,7 @@ func (e Elevation) Format() string {
 }
 
 type ElevationStats struct {
-	Descents Elevation
-	Ascents  Elevation
+	Descents, Ascents Elevation
 }
 
 type Altitude struct{ Value float64 }
@@ -142,8 +146,7 @@ func (a Altitude) Format() string {
 }
 
 type AltitudeStats struct {
-	Min Altitude
-	Max Altitude
+	Min, Max Altitude
 }
 
 type Distance struct{ Value uint32 }
@@ -196,15 +199,13 @@ func NewHeartrate(value uint8) *Heartrate {
 
 func (hr *Heartrate) Format() string {
 	if hr == nil {
-		return "no data"
+		return NoDataText
 	}
 	return fmt.Sprintf("%dbpm", hr.Value)
 }
 
 type HeartrateStats struct {
-	Min *Heartrate
-	Max *Heartrate
-	Avg *Heartrate
+	Min, Max, Avg *Heartrate
 }
 
 type RecordData struct {
@@ -212,7 +213,7 @@ type RecordData struct {
 	Distance    Distance
 	Speed       Speed
 	Temperature Temperature
-	GpsAccuracy GpsAccuracy
+	GpsAccuracy *GpsAccuracy
 	Altitude    Altitude
 	Heartrate   *Heartrate
 }

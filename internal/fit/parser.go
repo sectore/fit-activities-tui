@@ -58,11 +58,7 @@ func ParseFile(file string) (*common.ActivityData, error) {
 	}
 	var tempSum, tempCount uint
 
-	gpsAccuracyStats := common.GpsAccuracyStats{
-		Avg: common.NewGpsAccuracy(0),
-		Min: common.NewGpsAccuracy(0),
-		Max: common.NewGpsAccuracy(0),
-	}
+	gpsAccuracyStats := common.GpsAccuracyStats{}
 	var gpsSum, gpsCount uint
 
 	altitudeStats := common.AltitudeStats{
@@ -106,16 +102,32 @@ func ParseFile(file string) (*common.ActivityData, error) {
 			}
 		}
 
-		gpsAccuracy := r.GpsAccuracy
-		if gpsAccuracy == basetype.Uint8Invalid {
-			gpsAccuracy = 0
+		var gpsAccuracy *common.GpsAccuracy
+		if r.GpsAccuracy != basetype.Uint8Invalid {
+			gpsAccuracy = common.NewGpsAccuracy(r.GpsAccuracy)
+			// GPS accuracy stats calculation
+			// initialize min/max on first valid `gpsAccuracy`
+			if gpsCount == 0 {
+				gpsAccuracyStats.Min = gpsAccuracy
+				gpsAccuracyStats.Max = gpsAccuracy
+			}
+			// compare min
+			if gpsAccuracy.Value < gpsAccuracyStats.Min.Value {
+				gpsAccuracyStats.Min = gpsAccuracy
+			}
+			// compare max
+			if gpsAccuracy.Value > gpsAccuracyStats.Max.Value {
+				gpsAccuracyStats.Max = gpsAccuracy
+			}
+			gpsCount += 1
+			gpsSum += uint(gpsAccuracy.Value)
 		}
 
 		var heartrate *common.Heartrate
 		if r.HeartRate != basetype.Uint8Invalid {
 			heartrate = common.NewHeartrate(r.HeartRate)
 			// `Heartrate` stats calculation
-			// initialize min/max on first valid heartrate
+			// initialize min/max on first valid `heartrate`
 			if heartrateCount == 0 {
 				heartrateStats.Min = heartrate
 				heartrateStats.Max = heartrate
@@ -129,7 +141,7 @@ func ParseFile(file string) (*common.ActivityData, error) {
 				heartrateStats.Max = heartrate
 			}
 			heartrateCount += 1
-			heartrateSum += uint(r.HeartRate)
+			heartrateSum += uint(heartrate.Value)
 		}
 
 		record := common.RecordData{
@@ -138,7 +150,7 @@ func ParseFile(file string) (*common.ActivityData, error) {
 			Speed:       common.NewSpeed(float32(speed)),
 			Temperature: common.NewTemperature(float32(temperature)),
 			Altitude:    common.NewAltitude(altitudeValue),
-			GpsAccuracy: common.NewGpsAccuracy(float32(gpsAccuracy)),
+			GpsAccuracy: gpsAccuracy,
 			Heartrate:   heartrate,
 		}
 		records = append(records, record)
@@ -182,26 +194,6 @@ func ParseFile(file string) (*common.ActivityData, error) {
 			temperatureStats.Avg.Value = float32(tempSum / tempCount)
 		}
 
-		// GPS accuracy stats calculation
-		gpsValue := r.GpsAccuracy
-		if gpsValue != basetype.Uint8Invalid {
-			gpsValue_f := float32(gpsValue)
-			// override default zero value
-			if gpsCount == 0 {
-				gpsAccuracyStats.Min.Value = gpsValue_f
-			}
-			// compare min
-			if gpsValue_f < gpsAccuracyStats.Min.Value {
-				gpsAccuracyStats.Min.Value = gpsValue_f
-			}
-			// compare max
-			if gpsValue_f > gpsAccuracyStats.Max.Value {
-				gpsAccuracyStats.Max.Value = gpsValue_f
-			}
-			gpsCount += 1
-			gpsSum += uint(gpsValue)
-		}
-
 		// Altitude stats calculation
 		// Note: Since `altitudeValue` is already validated above
 		// we don't check for invalid values here
@@ -219,15 +211,14 @@ func ParseFile(file string) (*common.ActivityData, error) {
 
 	}
 
-	// Calculate GPS accuracy average
+	// Calculate ``GpsAccuracy` average
 	if gpsCount > 0 {
-		gpsAccuracyStats.Avg.Value = float32(gpsSum / gpsCount)
+		gpsAccuracyStats.Avg = common.NewGpsAccuracy(uint8(float32(gpsSum) / float32(gpsCount)))
 	}
 
 	// Calculate `Heartrate` average
 	if heartrateCount > 0 {
 		heartrateStats.Avg = common.NewHeartrate(uint8(float32(heartrateSum) / float32(heartrateCount)))
-
 	}
 
 	totalDistance := common.NewDistance(0)
