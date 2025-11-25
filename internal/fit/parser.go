@@ -203,8 +203,10 @@ func ParseFile(file string) (*common.ActivityData, error) {
 	}
 
 	// Calculate `Temperature` average
+	// Use math.Round for symmetric handling: truncation has sign-dependent bias
+	// (positive: 16.5°C → 16°C; negative: -0.5°C → 0°C truncates toward zero)
 	if tempCount > 0 {
-		temperatureStats.Avg = common.NewTemperature(int8(float32(tempSum) / float32(tempCount)))
+		temperatureStats.Avg = common.NewTemperature(int8(math.Round(float64(tempSum) / float64(tempCount))))
 	}
 
 	// Calculate `GpsAccuracy` average
