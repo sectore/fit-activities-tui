@@ -36,18 +36,21 @@ func (t Time) FormatHhMmSs() string {
 	return t.Value.Format("15:04:05")
 }
 
-type Temperature struct{ Value float32 }
+type Temperature struct{ Value int8 }
 
-func NewTemperature(value float32) Temperature {
-	return Temperature{Value: value}
+func NewTemperature(value int8) *Temperature {
+	return &Temperature{Value: value}
 }
 
-func (t Temperature) Format() string {
-	return fmt.Sprintf("%0.f°C", t.Value)
+func (t *Temperature) Format() string {
+	if t == nil {
+		return NoDataText
+	}
+	return fmt.Sprintf("%0d°C", t.Value)
 }
 
 type TemperatureStats struct {
-	Avg, Min, Max Temperature
+	Avg, Min, Max *Temperature
 }
 
 type GpsAccuracy struct{ Value uint8 }
@@ -212,7 +215,7 @@ type RecordData struct {
 	Time        Time
 	Distance    Distance
 	Speed       Speed
-	Temperature Temperature
+	Temperature *Temperature
 	GpsAccuracy *GpsAccuracy
 	Altitude    Altitude
 	Heartrate   *Heartrate

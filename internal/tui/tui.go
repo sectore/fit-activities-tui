@@ -554,16 +554,17 @@ func (m Model) RightContentView() string {
 						b0,
 						BAR_WIDTH)
 
-					minTemperature := math.Min(float64(ad.Temperature.Min.Value), 0)
-					temperatureTxt := col1("min") +
-						col2("max")
-					temperatureBar := HorizontalBarWithRange(
-						float64(currentRecord.Temperature.Value),
-						b1,
-						minTemperature,
-						float64(ad.Temperature.Max.Value),
-						b0,
-						BAR_WIDTH)
+					temperatureTxt := col1("min") + col2("max")
+					temperatureBar := HorizontalBar(0, b1, 0, b0, BAR_WIDTH)
+					if ad.Temperature.Min != nil && ad.Temperature.Max != nil && currentRecord.Temperature != nil {
+						temperatureBar = HorizontalBarWithRange(
+							float64(currentRecord.Temperature.Value),
+							b1,
+							float64(ad.Temperature.Min.Value),
+							float64(ad.Temperature.Max.Value),
+							b0,
+							BAR_WIDTH)
+					}
 					gpsTxt := col1("best") + col2("worst")
 					gpsBar := HorizontalBar(0, b1, 0, b0, BAR_WIDTH)
 					if ad.GpsAccuracy.Min != nil && ad.GpsAccuracy.Max != nil && currentRecord.GpsAccuracy != nil {
@@ -636,14 +637,18 @@ func (m Model) RightContentView() string {
 						float64(ad.Elevation.Descents.Value),
 						b2,
 						BAR_WIDTH)
-					temperatureTxt := col1("⌀ "+ad.Temperature.Avg.Format()) +
-						col2("max "+ad.Temperature.Max.Format())
-					temperatureBar := HorizontalBar(
-						float64(ad.Temperature.Avg.Value),
-						b1,
-						float64(ad.Temperature.Max.Value),
-						b0,
-						BAR_WIDTH)
+					temperatureTxt := common.NoDataText
+					temperatureBar := HorizontalBar(0, b1, 0, b0, BAR_WIDTH)
+					if ad.Temperature.Avg != nil && ad.Temperature.Max != nil {
+						temperatureTxt = col1("⌀ "+ad.Temperature.Avg.Format()) +
+							col2("max "+ad.Temperature.Max.Format())
+						temperatureBar = HorizontalBar(
+							float64(ad.Temperature.Avg.Value),
+							b1,
+							float64(ad.Temperature.Max.Value),
+							b0,
+							BAR_WIDTH)
+					}
 					gpsTxt := common.NoDataText
 					gpsBar := HorizontalBar(0, b1, 0, b0, BAR_WIDTH)
 					if ad.GpsAccuracy.Avg != nil && ad.GpsAccuracy.Max != nil {

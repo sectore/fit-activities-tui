@@ -51,12 +51,9 @@ func ParseFile(file string) (*common.ActivityData, error) {
 	}
 	var speedCount, speedTotal uint
 
-	temperatureStats := common.TemperatureStats{
-		Min: common.NewTemperature(0),
-		Max: common.NewTemperature(0),
-		Avg: common.NewTemperature(0),
-	}
-	var tempSum, tempCount uint
+	temperatureStats := common.TemperatureStats{}
+	var tempSum int
+	var tempCount uint
 
 	gpsAccuracyStats := common.GpsAccuracyStats{}
 	var gpsSum, gpsCount uint
@@ -82,9 +79,26 @@ func ParseFile(file string) (*common.ActivityData, error) {
 			}
 		}
 
-		temperature := r.Temperature
-		if temperature == basetype.Sint8Invalid {
-			temperature = 0
+		var temperature *common.Temperature
+		if r.Temperature != basetype.Sint8Invalid {
+			temperature = common.NewTemperature(r.Temperature)
+			// `Temperature` stats calculation
+			// initialize values on first valid `Temperature`
+			if tempCount == 0 {
+				temperatureStats.Min = temperature
+				temperatureStats.Max = temperature
+				temperatureStats.Avg = temperature
+			}
+			// compare min
+			if temperature.Value < temperatureStats.Min.Value {
+				temperatureStats.Min = temperature
+			}
+			// compare max
+			if temperature.Value > temperatureStats.Max.Value {
+				temperatureStats.Max = temperature
+			}
+			tempCount += 1
+			tempSum += int(temperature.Value)
 		}
 
 		distance := r.Distance
@@ -105,11 +119,12 @@ func ParseFile(file string) (*common.ActivityData, error) {
 		var gpsAccuracy *common.GpsAccuracy
 		if r.GpsAccuracy != basetype.Uint8Invalid {
 			gpsAccuracy = common.NewGpsAccuracy(r.GpsAccuracy)
-			// GPS accuracy stats calculation
-			// initialize min/max on first valid `gpsAccuracy`
+			// `GpsAccuracyStats` calculation
+			// initialize values on first valid `GpsAccuracy`
 			if gpsCount == 0 {
 				gpsAccuracyStats.Min = gpsAccuracy
 				gpsAccuracyStats.Max = gpsAccuracy
+				gpsAccuracyStats.Avg = gpsAccuracy
 			}
 			// compare min
 			if gpsAccuracy.Value < gpsAccuracyStats.Min.Value {
@@ -126,11 +141,12 @@ func ParseFile(file string) (*common.ActivityData, error) {
 		var heartrate *common.Heartrate
 		if r.HeartRate != basetype.Uint8Invalid {
 			heartrate = common.NewHeartrate(r.HeartRate)
-			// `Heartrate` stats calculation
-			// initialize min/max on first valid `heartrate`
+			// `HeartrateStats` calculation
+			// initialize values on first valid `Heartrate`
 			if heartrateCount == 0 {
 				heartrateStats.Min = heartrate
 				heartrateStats.Max = heartrate
+				heartrateStats.Avg = heartrate
 			}
 			// compare min
 			if heartrate.Value < heartrateStats.Min.Value {
@@ -148,7 +164,7 @@ func ParseFile(file string) (*common.ActivityData, error) {
 			Time:        common.NewTime(r.Timestamp.Local()),
 			Distance:    common.NewDistance(distance),
 			Speed:       common.NewSpeed(float32(speed)),
-			Temperature: common.NewTemperature(float32(temperature)),
+			Temperature: temperature,
 			Altitude:    common.NewAltitude(altitudeValue),
 			GpsAccuracy: gpsAccuracy,
 			Heartrate:   heartrate,
@@ -169,31 +185,6 @@ func ParseFile(file string) (*common.ActivityData, error) {
 			speedStats.Avg.Value = avg
 		}
 
-		// Temperature stats calculation
-		tempValue := r.Temperature
-		if tempValue != basetype.Sint8Invalid {
-			tempValue_f := float32(tempValue)
-			// override default zero value
-			if tempCount == 0 {
-				temperatureStats.Min.Value = tempValue_f
-			}
-			// compare min
-			if tempValue_f < temperatureStats.Min.Value {
-				temperatureStats.Min.Value = tempValue_f
-			}
-			// compare max
-			if tempValue_f > temperatureStats.Max.Value {
-				temperatureStats.Max.Value = tempValue_f
-			}
-			tempCount += 1
-			tempSum += uint(tempValue)
-		}
-
-		// Calculate temperature average
-		if tempCount > 0 {
-			temperatureStats.Avg.Value = float32(tempSum / tempCount)
-		}
-
 		// Altitude stats calculation
 		// Note: Since `altitudeValue` is already validated above
 		// we don't check for invalid values here
@@ -211,7 +202,12 @@ func ParseFile(file string) (*common.ActivityData, error) {
 
 	}
 
-	// Calculate ``GpsAccuracy` average
+	// Calculate `Temperature` average
+	if tempCount > 0 {
+		temperatureStats.Avg = common.NewTemperature(int8(float32(tempSum) / float32(tempCount)))
+	}
+
+	// Calculate `GpsAccuracy` average
 	if gpsCount > 0 {
 		gpsAccuracyStats.Avg = common.NewGpsAccuracy(uint8(float32(gpsSum) / float32(gpsCount)))
 	}
