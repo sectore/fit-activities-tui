@@ -80,11 +80,10 @@ func ParseFile(file string) (*common.ActivityData, error) {
 		if r.Temperature != basetype.Sint8Invalid {
 			temperature = common.NewTemperature(r.Temperature)
 			// `Temperature` stats calculation
-			// initialize values on first valid `Temperature`
+			// initialize min/max on first valid `Temperature`
 			if tempCount == 0 {
 				temperatureStats.Min = temperature
 				temperatureStats.Max = temperature
-				temperatureStats.Avg = temperature
 			}
 			// compare min
 			if temperature.Value < temperatureStats.Min.Value {
@@ -117,7 +116,6 @@ func ParseFile(file string) (*common.ActivityData, error) {
 			// initialize `max` on first valid `Speed`
 			if speedCount == 0 {
 				speedStats.Max = speed
-				speedStats.Avg = speed
 			}
 
 			if speedStats.Max.Value < speed.Value {
@@ -131,11 +129,10 @@ func ParseFile(file string) (*common.ActivityData, error) {
 		if r.GpsAccuracy != basetype.Uint8Invalid {
 			gpsAccuracy = common.NewGpsAccuracy(r.GpsAccuracy)
 			// `GpsAccuracyStats` calculation
-			// initialize values on first valid `GpsAccuracy`
+			// initialize min/max on first valid `GpsAccuracy`
 			if gpsCount == 0 {
 				gpsAccuracyStats.Min = gpsAccuracy
 				gpsAccuracyStats.Max = gpsAccuracy
-				gpsAccuracyStats.Avg = gpsAccuracy
 			}
 			// compare min
 			if gpsAccuracy.Value < gpsAccuracyStats.Min.Value {
@@ -153,11 +150,10 @@ func ParseFile(file string) (*common.ActivityData, error) {
 		if r.HeartRate != basetype.Uint8Invalid {
 			heartrate = common.NewHeartrate(r.HeartRate)
 			// `HeartrateStats` calculation
-			// initialize values on first valid `Heartrate`
+			// initialize min/max on first valid `Heartrate`
 			if heartrateCount == 0 {
 				heartrateStats.Min = heartrate
 				heartrateStats.Max = heartrate
-				heartrateStats.Avg = heartrate
 			}
 			// compare min
 			if heartrate.Value < heartrateStats.Min.Value {
