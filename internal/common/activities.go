@@ -72,16 +72,19 @@ type GpsAccuracyStats struct {
 
 type Speed struct{ Value float32 }
 
-func NewSpeed(value float32) Speed {
-	return Speed{Value: value}
+func NewSpeed(value float32) *Speed {
+	return &Speed{Value: value}
 }
 
-func (s Speed) Format() string {
+func (s *Speed) Format() string {
+	if s == nil {
+		return NoDataText
+	}
 	return fmt.Sprintf("%.1fkm/h", s.Value*3.6/1000)
 }
 
 type SpeedStats struct {
-	Avg, Max Speed
+	Avg, Max *Speed
 }
 
 // Duration in milliseconds
@@ -214,7 +217,7 @@ type HeartrateStats struct {
 type RecordData struct {
 	Time        Time
 	Distance    Distance
-	Speed       Speed
+	Speed       *Speed
 	Temperature *Temperature
 	GpsAccuracy *GpsAccuracy
 	Altitude    Altitude

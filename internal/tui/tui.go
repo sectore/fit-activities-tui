@@ -534,14 +534,17 @@ func (m Model) RightContentView() string {
 						float64(finalDuration.Value),
 						b0,
 						BAR_WIDTH)
-					speedTxt := col1("min") +
-						col2("max")
-					speedBar := HorizontalBar(
-						float64(currentRecord.Speed.Value),
-						b1,
-						float64(ad.Speed.Max.Value),
-						b0,
-						BAR_WIDTH)
+
+					speedTxt := col1("min") + col2("max")
+					speedBar := HorizontalBar(0, b1, 0, b0, BAR_WIDTH)
+					if ad.Speed.Max != nil && currentRecord.Speed != nil {
+						speedBar = HorizontalBar(
+							float64(currentRecord.Speed.Value),
+							b1,
+							float64(ad.Speed.Max.Value),
+							b0,
+							BAR_WIDTH)
+					}
 
 					minAltitude := math.Min(float64(ad.Altitude.Min.Value), 0)
 					altitudeTxt := col1("min") +
@@ -621,14 +624,18 @@ func (m Model) RightContentView() string {
 						float64(ad.Duration.Pause.Value),
 						b2,
 						BAR_WIDTH)
-					speedTxt := col1("⌀ "+ad.Speed.Avg.Format()) +
-						col2("max "+ad.Speed.Max.Format())
-					speedBar := HorizontalBar(
-						float64(ad.Speed.Avg.Value),
-						b1,
-						float64(ad.Speed.Max.Value),
-						b0,
-						BAR_WIDTH)
+					speedTxt := common.NoDataText
+					speedBar := HorizontalBar(0, b1, 0, b0, BAR_WIDTH)
+					if ad.Speed.Avg != nil && ad.Speed.Max != nil {
+						speedTxt = col1("⌀ "+ad.Speed.Avg.Format()) + col2("max "+ad.Speed.Max.Format())
+						speedBar = HorizontalBar(
+							float64(ad.Speed.Avg.Value),
+							b1,
+							float64(ad.Speed.Max.Value),
+							b0,
+							BAR_WIDTH)
+
+					}
 					elevationTxt := col1(arrowTop+" "+ad.Elevation.Ascents.Format()) +
 						col2(arrowDown+" "+ad.Elevation.Descents.Format())
 					elevationBar := HorizontalStackedBar(

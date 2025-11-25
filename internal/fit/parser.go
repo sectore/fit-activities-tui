@@ -45,10 +45,7 @@ func ParseFile(file string) (*common.ActivityData, error) {
 	}
 
 	var records []common.RecordData
-	speedStats := common.SpeedStats{
-		Avg: common.NewSpeed(0),
-		Max: common.NewSpeed(0),
-	}
+	speedStats := common.SpeedStats{}
 	var speedCount, speedTotal uint
 
 	temperatureStats := common.TemperatureStats{}
@@ -106,14 +103,28 @@ func ParseFile(file string) (*common.ActivityData, error) {
 			distance = 0
 		}
 
+		var speed *common.Speed
 		// Use `EnhancedSpeed` if available, otherwise fallback to `Speed`
 		// This ensures compatibility (Garmin: `EnhancedSpeed`, Wahoo: both)
-		speed := r.EnhancedSpeed
-		if speed == basetype.Uint32Invalid {
-			speed = uint32(r.Speed)
-			if r.Speed == basetype.Uint16Invalid {
-				speed = 0
+		if r.EnhancedSpeed != basetype.Uint32Invalid {
+			speed = common.NewSpeed(float32(r.EnhancedSpeed))
+		} else if r.Speed != basetype.Uint16Invalid {
+			speed = common.NewSpeed(float32(r.Speed))
+		}
+
+		if speed != nil {
+			// `SpeedStats` calculation
+			// initialize `max` on first valid `Speed`
+			if speedCount == 0 {
+				speedStats.Max = speed
+				speedStats.Avg = speed
 			}
+
+			if speedStats.Max.Value < speed.Value {
+				speedStats.Max = speed
+			}
+			speedCount += 1
+			speedTotal += uint(speed.Value)
 		}
 
 		var gpsAccuracy *common.GpsAccuracy
@@ -163,27 +174,13 @@ func ParseFile(file string) (*common.ActivityData, error) {
 		record := common.RecordData{
 			Time:        common.NewTime(r.Timestamp.Local()),
 			Distance:    common.NewDistance(distance),
-			Speed:       common.NewSpeed(float32(speed)),
+			Speed:       speed,
 			Temperature: temperature,
 			Altitude:    common.NewAltitude(altitudeValue),
 			GpsAccuracy: gpsAccuracy,
 			Heartrate:   heartrate,
 		}
 		records = append(records, record)
-
-		// Speed stats calculation
-		speed_f := float32(speed)
-		if speedStats.Max.Value < speed_f {
-			speedStats.Max.Value = speed_f
-		}
-		speedCount += 1
-		speedTotal += uint(speed)
-
-		// Calculate speed average
-		if speedCount > 0 {
-			avg := float32(speedTotal / speedCount)
-			speedStats.Avg.Value = avg
-		}
 
 		// Altitude stats calculation
 		// Note: Since `altitudeValue` is already validated above
@@ -202,8 +199,13 @@ func ParseFile(file string) (*common.ActivityData, error) {
 
 	}
 
+	// Calculate `Speed` average
+	if speedCount > 0 {
+		speedStats.Avg = common.NewSpeed(float32(speedTotal / speedCount))
+	}
+
 	// Calculate `Temperature` average
-	// Use math.Round for symmetric handling: truncation has sign-dependent bias
+	// Use `math.Round` for symmetric handling: truncation has sign-dependent bias
 	// (positive: 16.5°C → 16°C; negative: -0.5°C → 0°C truncates toward zero)
 	if tempCount > 0 {
 		temperatureStats.Avg = common.NewTemperature(int8(math.Round(float64(tempSum) / float64(tempCount))))
