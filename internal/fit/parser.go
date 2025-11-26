@@ -113,9 +113,10 @@ func ParseFile(file string) (*common.ActivityData, error) {
 			tempSum += int(temperature.Value)
 		}
 
-		distance := r.Distance
-		if distance == basetype.Uint32Invalid {
-			distance = 0
+		var distancePtr *common.Distance
+		if r.Distance != basetype.Uint32Invalid {
+			distance := common.NewDistance(r.Distance)
+			distancePtr = common.Ptr(distance)
 		}
 
 		var speedPtr *common.Speed
@@ -189,7 +190,7 @@ func ParseFile(file string) (*common.ActivityData, error) {
 
 		record := common.RecordData{
 			Time:        common.NewTime(r.Timestamp.Local()),
-			Distance:    common.NewDistance(distance),
+			Distance:    distancePtr,
 			Speed:       speedPtr,
 			Temperature: temperaturePtr,
 			Altitude:    altitudePtr,
@@ -226,12 +227,22 @@ func ParseFile(file string) (*common.ActivityData, error) {
 		heartrateStats.Avg = common.Ptr(heartrate)
 	}
 
-	totalDistance := common.NewDistance(0)
+	var totalDistance *common.Distance
 	durationStats := common.DurationStats{}
 	elevationStats := common.ElevationStats{}
 
 	for _, s := range act.Sessions {
-		totalDistance.Value += s.TotalDistance
+
+		if s.TotalDistance != basetype.Uint32Invalid {
+			value := s.TotalDistance
+			if totalDistance == nil {
+				d := common.NewDistance(value)
+				totalDistance = common.Ptr(d)
+			} else {
+				// update inner `Value`
+				totalDistance.Value += value
+			}
+		}
 
 		// Duration stats calculation
 		if s.TotalElapsedTime != basetype.Uint32Invalid {

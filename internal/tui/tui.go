@@ -514,14 +514,18 @@ func (m Model) RightContentView() string {
 				if m.showLiveData {
 					timeTxt := currentRecord.Time.FormatDate() + " " + currentRecord.Time.FormatHhMmSs()
 
-					distanceTxt := col1("start") +
-						col2("finish")
-					distanceBar := HorizontalBar(
-						float64(currentRecord.Distance.Value),
-						b1,
-						float64(ad.TotalDistance.Value),
-						b0,
-						BAR_WIDTH)
+					distanceTxt := col1("start") + col2("finish")
+					distanceBarTxt := common.NoDataText
+					distanceBar := HorizontalBar(0, b1, 0, b0, BAR_WIDTH)
+					if ad.TotalDistance != nil && currentRecord.Distance != nil {
+						distanceBarTxt = currentRecord.Distance.Format3()
+						distanceBar = HorizontalBar(
+							float64(currentRecord.Distance.Value),
+							b1,
+							float64(ad.TotalDistance.Value),
+							b0,
+							BAR_WIDTH)
+					}
 
 					currentDuration := TimeToDuration(ad.StartTime(), currentRecord.Time)
 					finalDuration := TimeToDuration(ad.StartTime(), ad.FinishTime())
@@ -536,11 +540,9 @@ func (m Model) RightContentView() string {
 
 					speedTxt := col1("min") + col2("max")
 					speedBarTxt := common.NoDataText
-					if currentRecord.Speed != nil {
-						speedBarTxt = currentRecord.Speed.Format()
-					}
 					speedBar := HorizontalBar(0, b1, 0, b0, BAR_WIDTH)
 					if ad.Speed.Max != nil && currentRecord.Speed != nil {
+						speedBarTxt = currentRecord.Speed.Format()
 						speedBar = HorizontalBar(
 							float64(currentRecord.Speed.Value),
 							b1,
@@ -551,11 +553,9 @@ func (m Model) RightContentView() string {
 
 					altitudeTxt := col1("min") + col2("max")
 					altitudeBarTxt := common.NoDataText
-					if currentRecord.Altitude != nil {
-						altitudeBarTxt = currentRecord.Altitude.Format()
-					}
 					altitudeBar := HorizontalBar(0, b1, 0, b0, BAR_WIDTH)
 					if ad.Altitude.Min != nil && ad.Altitude.Max != nil && currentRecord.Altitude != nil {
+						altitudeBarTxt = currentRecord.Altitude.Format()
 						altitudeBar = HorizontalBarWithRange(
 							float64(currentRecord.Altitude.Value),
 							b1,
@@ -567,11 +567,9 @@ func (m Model) RightContentView() string {
 
 					temperatureTxt := col1("min") + col2("max")
 					temperatureBarTxt := common.NoDataText
-					if currentRecord.Temperature != nil {
-						temperatureBarTxt = currentRecord.Temperature.Format()
-					}
 					temperatureBar := HorizontalBar(0, b1, 0, b0, BAR_WIDTH)
 					if ad.Temperature.Min != nil && ad.Temperature.Max != nil && currentRecord.Temperature != nil {
+						temperatureBarTxt = currentRecord.Temperature.Format()
 						temperatureBar = HorizontalBarWithRange(
 							float64(currentRecord.Temperature.Value),
 							b1,
@@ -583,11 +581,9 @@ func (m Model) RightContentView() string {
 
 					gpsTxt := col1("best") + col2("worst")
 					gpsBarTxt := common.NoDataText
-					if currentRecord.GpsAccuracy != nil {
-						gpsBarTxt = currentRecord.GpsAccuracy.Format()
-					}
 					gpsBar := HorizontalBar(0, b1, 0, b0, BAR_WIDTH)
 					if ad.GpsAccuracy.Min != nil && ad.GpsAccuracy.Max != nil && currentRecord.GpsAccuracy != nil {
+						gpsBarTxt = currentRecord.GpsAccuracy.Format()
 						gpsBar = HorizontalBarWithRange(
 							float64(currentRecord.GpsAccuracy.Value),
 							b1,
@@ -599,11 +595,9 @@ func (m Model) RightContentView() string {
 
 					heartrateTxt := col1("min") + col2("max")
 					heartrateBarTxt := common.NoDataText
-					if currentRecord.Heartrate != nil {
-						heartrateBarTxt = currentRecord.Heartrate.Format()
-					}
 					heartrateBar := HorizontalBar(0, b1, 0, b0, BAR_WIDTH)
 					if ad.Heartrate.Min != nil && ad.Heartrate.Max != nil && currentRecord.Heartrate != nil {
+						heartrateBarTxt = currentRecord.Heartrate.Format()
 						heartrateBar = HorizontalBarWithRange(
 							float64(currentRecord.Heartrate.Value),
 							b1,
@@ -616,7 +610,7 @@ func (m Model) RightContentView() string {
 					rows = [][]string{
 						{th("time"), timeTxt},
 						{th("distance"), distanceTxt},
-						{currentRecord.Distance.Format3(), distanceBar},
+						{distanceBarTxt, distanceBar},
 						{th("duration"), durationTxt},
 						{currentDuration.Format(), durationBar},
 						{th("speed"), speedTxt},

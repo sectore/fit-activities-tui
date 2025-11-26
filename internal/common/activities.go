@@ -207,7 +207,7 @@ type HeartrateStats struct {
 
 type RecordData struct {
 	Time        Time
-	Distance    Distance
+	Distance    *Distance
 	Speed       *Speed
 	Temperature *Temperature
 	GpsAccuracy *GpsAccuracy
@@ -217,7 +217,7 @@ type RecordData struct {
 
 type ActivityData struct {
 	Duration      DurationStats
-	TotalDistance Distance
+	TotalDistance *Distance
 	Speed         SpeedStats
 	Temperature   TemperatureStats
 	Elevation     ElevationStats
@@ -253,7 +253,7 @@ type Activity struct {
 func (act Activity) FilterValue() string {
 	var value string
 	if data, ok := asyncdata.Success(act.Data); ok {
-		value = (*data).StartTime().Format()
+		value = data.StartTime().Format()
 	}
 	return value
 
@@ -262,7 +262,7 @@ func (act Activity) FilterValue() string {
 func (act Activity) Title() string {
 	var title string
 	if data, ok := asyncdata.Success(act.Data); ok {
-		title = (*data).StartTime().Format()
+		title = data.StartTime().Format()
 	}
 	return title
 }
@@ -273,7 +273,9 @@ func (act Activity) Description() string {
 
 func (act Activity) TotalDistance() Distance {
 	if data, ok := asyncdata.Success(act.Data); ok {
-		return (*data).TotalDistance
+		if data.TotalDistance != nil {
+			return *data.TotalDistance
+		}
 	}
 	return NewDistance(0)
 }
@@ -283,14 +285,14 @@ var defaultTime = time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC)
 
 func (act Activity) StartTime() Time {
 	if data, ok := asyncdata.Success(act.Data); ok {
-		return (*data).StartTime()
+		return data.StartTime()
 	}
 	return NewTime(defaultTime)
 }
 
 func (act Activity) FinishTime() Time {
 	if data, ok := asyncdata.Success(act.Data); ok {
-		return (*data).FinishTime()
+		return data.FinishTime()
 	}
 	return NewTime(defaultTime)
 }
@@ -298,8 +300,8 @@ func (act Activity) FinishTime() Time {
 func (act Activity) GetTotalDuration() Duration {
 	total := NewDuration(0)
 	if data, ok := asyncdata.Success(act.Data); ok {
-		if (*data).Duration.Total != nil {
-			total.Value += (*data).Duration.Total.Value
+		if data.Duration.Total != nil {
+			total.Value += data.Duration.Total.Value
 		}
 	}
 	return total
@@ -343,14 +345,16 @@ func (act *Activity) ResetRecordIndex() {
 // `Records` per second (RPS) based on total `Duration` and number of records
 func (act *Activity) RPS() float64 {
 	if data, ok := asyncdata.Success(act.Data); ok {
-		totalDurationMs := float64(data.Duration.Total.Value)
-		recordCount := float64(len(data.Records))
+		if data.Duration.Total != nil {
+			totalDurationMs := float64(data.Duration.Total.Value)
+			recordCount := float64(len(data.Records))
 
-		if totalDurationMs > 0 && recordCount > 0 {
-			// ms to seconds
-			totalDurationSeconds := totalDurationMs / 1000.0
-			// records per second
-			return recordCount / totalDurationSeconds
+			if totalDurationMs > 0 && recordCount > 0 {
+				// ms to seconds
+				totalDurationSeconds := totalDurationMs / 1000.0
+				// records per second
+				return recordCount / totalDurationSeconds
+			}
 		}
 	}
 	return 1.0 // fallback to 1 RPS
