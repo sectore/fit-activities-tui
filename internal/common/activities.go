@@ -206,7 +206,7 @@ type HeartrateStats struct {
 }
 
 type RecordData struct {
-	Time        Time
+	Time        *Time
 	Distance    *Distance
 	Speed       *Speed
 	Temperature *Temperature
@@ -233,10 +233,10 @@ func (ad ActivityData) NoRecords() int {
 }
 
 func (ad ActivityData) StartTime() *Time {
-	if ad.NoRecords() == 0 {
+	if ad.NoRecords() == 0 || ad.Records[0].Time == nil {
 		return nil
 	}
-	return &ad.Records[0].Time
+	return ad.Records[0].Time
 }
 
 func (ad ActivityData) FinishTime() *Time {
@@ -244,7 +244,7 @@ func (ad ActivityData) FinishTime() *Time {
 		return nil
 	}
 	last := max(ad.NoRecords()-1, 0)
-	return &ad.Records[last].Time
+	return ad.Records[last].Time
 }
 
 type ActivityAD = asyncdata.AsyncData[error, ActivityData]

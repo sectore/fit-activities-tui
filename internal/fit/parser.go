@@ -188,8 +188,14 @@ func ParseFile(file string) (*common.ActivityData, error) {
 			heartrateSum += uint(heartrate.Value)
 		}
 
+		var timePtr *common.Time
+		if !r.Timestamp.IsZero() {
+			time := common.NewTime(r.Timestamp.Local())
+			timePtr = common.Ptr(time)
+		}
+
 		record := common.RecordData{
-			Time:        common.NewTime(r.Timestamp.Local()),
+			Time:        timePtr,
 			Distance:    distancePtr,
 			Speed:       speedPtr,
 			Temperature: temperaturePtr,

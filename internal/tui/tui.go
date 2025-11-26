@@ -512,7 +512,10 @@ func (m Model) RightContentView() string {
 				b2 := BarFullHalf
 
 				if m.showLiveData {
-					timeTxt := currentRecord.Time.FormatDate() + " " + currentRecord.Time.FormatHhMmSs()
+					timeTxt := common.NoDataText
+					if currentRecord.Time != nil {
+						timeTxt = currentRecord.Time.FormatDate() + " " + currentRecord.Time.FormatHhMmSs()
+					}
 
 					distanceTxt := col1("start") + col2("finish")
 					distanceBarTxt := common.NoDataText
@@ -531,9 +534,10 @@ func (m Model) RightContentView() string {
 					durationBarTxt := common.NoDataText
 					startTime := ad.StartTime()
 					finishTime := ad.FinishTime()
+					currentTime := currentRecord.Time
 					durationBar := HorizontalBar(0, b1, 0, b0, BAR_WIDTH)
-					if startTime != nil && finishTime != nil {
-						currentDuration := TimeToDuration(*startTime, currentRecord.Time)
+					if startTime != nil && finishTime != nil && currentTime != nil {
+						currentDuration := TimeToDuration(*startTime, *currentTime)
 						finalDuration := TimeToDuration(*startTime, *finishTime)
 						durationBar = HorizontalBar(
 							float64(currentDuration.Value),
