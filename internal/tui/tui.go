@@ -3,7 +3,6 @@ package tui
 import (
 	"fmt"
 	"log"
-	"math"
 	"path/filepath"
 	"strings"
 	"time"
@@ -508,154 +507,212 @@ func (m Model) RightContentView() string {
 				noRecordsText := fmt.Sprintf(`%d (%.1frps)`, ad.NoRecords(), rps)
 				noSessionsText := fmt.Sprintf(`%d`, ad.NoSessions)
 
+				b0 := BarEmpty
 				b1 := BarEmptyHalf
-				b2 := BarEmpty
+				b2 := BarFullHalf
 
 				if m.showLiveData {
-					timeTxt := currentRecord.Time.FormatDate() + " " + currentRecord.Time.FormatHhMmSs()
+					timeTxt := common.NoDataText
+					if currentRecord.Time != nil {
+						timeTxt = currentRecord.Time.FormatDate() + " " + currentRecord.Time.FormatHhMmSs()
+					}
 
-					distanceTxt := col1("start") +
-						col2("finish")
-					distanceBar := HorizontalBar(
-						float64(currentRecord.Distance.Value),
-						b1,
-						float64(ad.TotalDistance.Value),
-						b2,
-						BAR_WIDTH)
+					distanceTxt := col1("start") + col2("finish")
+					distanceBarTxt := common.NoDataText
+					distanceBar := HorizontalBar(0, b1, 0, b0, BAR_WIDTH)
+					if ad.TotalDistance != nil && currentRecord.Distance != nil {
+						distanceBarTxt = currentRecord.Distance.Format3()
+						distanceBar = HorizontalBar(
+							float64(currentRecord.Distance.Value),
+							b1,
+							float64(ad.TotalDistance.Value),
+							b0,
+							BAR_WIDTH)
+					}
 
-					currentDuration := TimeToDuration(ad.StartTime(), currentRecord.Time)
-					finalDuration := TimeToDuration(ad.StartTime(), ad.FinishTime())
-					durationTxt := col1("start") +
-						col2("finish")
-					durationBar := HorizontalBar(
-						float64(currentDuration.Value),
-						b1,
-						float64(finalDuration.Value),
-						b2,
-						BAR_WIDTH)
-					speedTxt := col1("min") +
-						col2("max")
-					speedBar := HorizontalBar(
-						float64(currentRecord.Speed.Value),
-						b1,
-						float64(ad.Speed.Max.Value),
-						b2,
-						BAR_WIDTH)
+					durationTxt := col1("start") + col2("finish")
+					durationBarTxt := common.NoDataText
+					startTime := ad.StartTime()
+					finishTime := ad.FinishTime()
+					currentTime := currentRecord.Time
+					durationBar := HorizontalBar(0, b1, 0, b0, BAR_WIDTH)
+					if startTime != nil && finishTime != nil && currentTime != nil {
+						currentDuration := TimeToDuration(*startTime, *currentTime)
+						finalDuration := TimeToDuration(*startTime, *finishTime)
+						durationBar = HorizontalBar(
+							float64(currentDuration.Value),
+							b1,
+							float64(finalDuration.Value),
+							b0,
+							BAR_WIDTH)
+					}
 
-					minAltitude := math.Min(float64(ad.Altitude.Min.Value), 0)
-					altitudeTxt := col1("min") +
-						col2("max")
-					altitudeBar := HorizontalBarWithRange(
-						float64(currentRecord.Altitude.Value),
-						b1,
-						minAltitude,
-						float64(ad.Altitude.Max.Value),
-						b2,
-						BAR_WIDTH)
+					speedTxt := col1("min") + col2("max")
+					speedBarTxt := common.NoDataText
+					speedBar := HorizontalBar(0, b1, 0, b0, BAR_WIDTH)
+					if ad.Speed.Max != nil && currentRecord.Speed != nil {
+						speedBarTxt = currentRecord.Speed.Format()
+						speedBar = HorizontalBar(
+							float64(currentRecord.Speed.Value),
+							b1,
+							float64(ad.Speed.Max.Value),
+							b0,
+							BAR_WIDTH)
+					}
 
-					minTemperature := math.Min(float64(ad.Temperature.Min.Value), 0)
-					temperatureTxt := col1("min") +
-						col2("max")
-					temperatureBar := HorizontalBarWithRange(
-						float64(currentRecord.Temperature.Value),
-						b1,
-						minTemperature,
-						float64(ad.Temperature.Max.Value),
-						b2,
-						BAR_WIDTH)
-					minGps := math.Min(float64(ad.GpsAccuracy.Min.Value), 0)
-					gpsTxt := col1("best") +
-						col2("worst")
-					gpsBar := HorizontalBarWithRange(
-						float64(currentRecord.GpsAccuracy.Value),
-						b1,
-						minGps,
-						float64(ad.GpsAccuracy.Max.Value),
-						b2,
-						BAR_WIDTH)
+					altitudeTxt := col1("min") + col2("max")
+					altitudeBarTxt := common.NoDataText
+					altitudeBar := HorizontalBar(0, b1, 0, b0, BAR_WIDTH)
+					if ad.Altitude.Min != nil && ad.Altitude.Max != nil && currentRecord.Altitude != nil {
+						altitudeBarTxt = currentRecord.Altitude.Format()
+						altitudeBar = HorizontalBarWithRange(
+							float64(currentRecord.Altitude.Value),
+							b1,
+							ad.Altitude.Min.Value,
+							float64(ad.Altitude.Max.Value),
+							b0,
+							BAR_WIDTH)
+					}
+
+					temperatureTxt := col1("min") + col2("max")
+					temperatureBarTxt := common.NoDataText
+					temperatureBar := HorizontalBar(0, b1, 0, b0, BAR_WIDTH)
+					if ad.Temperature.Min != nil && ad.Temperature.Max != nil && currentRecord.Temperature != nil {
+						temperatureBarTxt = currentRecord.Temperature.Format()
+						temperatureBar = HorizontalBarWithRange(
+							float64(currentRecord.Temperature.Value),
+							b1,
+							float64(ad.Temperature.Min.Value),
+							float64(ad.Temperature.Max.Value),
+							b0,
+							BAR_WIDTH)
+					}
+
+					gpsTxt := col1("best") + col2("worst")
+					gpsBarTxt := common.NoDataText
+					gpsBar := HorizontalBar(0, b1, 0, b0, BAR_WIDTH)
+					if ad.GpsAccuracy.Min != nil && ad.GpsAccuracy.Max != nil && currentRecord.GpsAccuracy != nil {
+						gpsBarTxt = currentRecord.GpsAccuracy.Format()
+						gpsBar = HorizontalBarWithRange(
+							float64(currentRecord.GpsAccuracy.Value),
+							b1,
+							float64(ad.GpsAccuracy.Min.Value),
+							float64(ad.GpsAccuracy.Max.Value),
+							b0,
+							BAR_WIDTH)
+					}
+
 					heartrateTxt := col1("min") + col2("max")
-					heartrateBar := HorizontalBar(0, b1, 0, b2, BAR_WIDTH)
-					currentHeartrateTxt := "no data"
+					heartrateBarTxt := common.NoDataText
+					heartrateBar := HorizontalBar(0, b1, 0, b0, BAR_WIDTH)
 					if ad.Heartrate.Min != nil && ad.Heartrate.Max != nil && currentRecord.Heartrate != nil {
-						minHeartrate := math.Min(float64(ad.Heartrate.Min.Value), 0)
+						heartrateBarTxt = currentRecord.Heartrate.Format()
 						heartrateBar = HorizontalBarWithRange(
 							float64(currentRecord.Heartrate.Value),
 							b1,
-							minHeartrate,
+							float64(ad.Heartrate.Min.Value),
 							float64(ad.Heartrate.Max.Value),
-							b2,
+							b0,
 							BAR_WIDTH)
-						currentHeartrateTxt = currentRecord.Heartrate.Format()
 					}
 
 					rows = [][]string{
 						{th("time"), timeTxt},
 						{th("distance"), distanceTxt},
-						{currentRecord.Distance.Format3(), distanceBar},
+						{distanceBarTxt, distanceBar},
 						{th("duration"), durationTxt},
-						{currentDuration.Format(), durationBar},
+						{durationBarTxt, durationBar},
 						{th("speed"), speedTxt},
-						{currentRecord.Speed.Format(), speedBar},
+						{speedBarTxt, speedBar},
 						{th("altitude"), altitudeTxt},
-						{currentRecord.Altitude.Format(), altitudeBar},
+						{altitudeBarTxt, altitudeBar},
 						{th("temperature"), temperatureTxt},
-						{currentRecord.Temperature.Format(), temperatureBar},
+						{temperatureBarTxt, temperatureBar},
 						{th("gps accuracy"), gpsTxt},
-						{currentRecord.GpsAccuracy.Format(), gpsBar},
-						{th("♥rate"), heartrateTxt},
-						{currentHeartrateTxt, heartrateBar},
+						{gpsBarTxt, gpsBar},
+						{th("♥ rate"), heartrateTxt},
+						{heartrateBarTxt, heartrateBar},
 						{th("sessions"), noSessionsText},
 						{th("record"), fmt.Sprint(act.RecordIndex()+1) + " of " + noRecordsText},
 					}
 				} else {
+					dateTxt := common.NoDataText
+					if ad.StartTime() != nil && ad.FinishTime() != nil {
+						dateTxt = ad.StartTime().Format() + "-" + ad.FinishTime().FormatHhMm()
 
-					dateTxt := ad.StartTime().Format() + "-" + ad.FinishTime().FormatHhMm()
-					durationTxt := col1(ad.Duration.Active.Format())
-					pauseTxt := "pause " + ad.Duration.Pause.Format()
-					if ad.Duration.Pause.Value <= 0 {
-						pauseTxt = "(no pause)"
 					}
-					durationTxt += col2(pauseTxt)
-					durationBar := HorizontalStackedBar(
-						float64(ad.Duration.Active.Value),
-						b1,
-						float64(ad.Duration.Pause.Value),
-						b2,
-						BAR_WIDTH)
-					speedTxt := col1("⌀ "+ad.Speed.Avg.Format()) +
-						col2("max "+ad.Speed.Max.Format())
-					speedBar := HorizontalBar(
-						float64(ad.Speed.Avg.Value),
-						b1,
-						float64(ad.Speed.Max.Value),
-						b2,
-						BAR_WIDTH)
-					elevationTxt := col1(arrowTop+" "+ad.Elevation.Ascents.Format()) +
-						col2(arrowDown+" "+ad.Elevation.Descents.Format())
-					elevationBar := HorizontalStackedBar(
-						float64(ad.Elevation.Ascents.Value),
-						b1,
-						float64(ad.Elevation.Descents.Value),
-						b2,
-						BAR_WIDTH)
-					temperatureTxt := col1("⌀ "+ad.Temperature.Avg.Format()) +
-						col2("max "+ad.Temperature.Max.Format())
-					temperatureBar := HorizontalBar(
-						float64(ad.Temperature.Avg.Value),
-						b1,
-						float64(ad.Temperature.Max.Value),
-						b2,
-						BAR_WIDTH)
-					gpsTxt := col1("⌀ "+ad.GpsAccuracy.Avg.Format()) +
-						col2("worse "+ad.GpsAccuracy.Max.Format())
-					gpsBar := HorizontalBar(
-						float64(ad.GpsAccuracy.Avg.Value),
-						b1,
-						float64(ad.GpsAccuracy.Max.Value),
-						b2,
-						BAR_WIDTH)
-					heartrateTxt := "no data"
-					heartrateBar := HorizontalBar(0, b1, 0, b2, BAR_WIDTH)
+					durationTxt := common.NoDataText
+					durationBar := HorizontalBar(0, b1, 0, b0, BAR_WIDTH)
+					if ad.Duration.Active != nil && ad.Duration.Pause != nil {
+						durationTxt = col1(ad.Duration.Active.Format())
+						pauseTxt := "pause " + ad.Duration.Pause.Format()
+						if ad.Duration.Pause.Value <= 0 {
+							pauseTxt = "(no pause)"
+						}
+
+						durationTxt += col2(pauseTxt)
+						durationBar = HorizontalStackedBar(
+							float64(ad.Duration.Active.Value),
+							b1,
+							float64(ad.Duration.Pause.Value),
+							b2,
+							BAR_WIDTH)
+					}
+
+					speedTxt := common.NoDataText
+					speedBar := HorizontalBar(0, b1, 0, b0, BAR_WIDTH)
+					if ad.Speed.Avg != nil && ad.Speed.Max != nil {
+						speedTxt = col1("⌀ "+ad.Speed.Avg.Format()) + col2("max "+ad.Speed.Max.Format())
+						speedBar = HorizontalBar(
+							float64(ad.Speed.Avg.Value),
+							b1,
+							float64(ad.Speed.Max.Value),
+							b0,
+							BAR_WIDTH)
+
+					}
+
+					elevationTxt := common.NoDataText
+					elevationBar := HorizontalBar(0, b1, 0, b0, BAR_WIDTH)
+					if ad.Elevation.Ascents != nil && ad.Elevation.Descents != nil {
+						elevationTxt = col1(arrowTop+" "+ad.Elevation.Ascents.Format()) +
+							col2(arrowDown+" "+ad.Elevation.Descents.Format())
+						elevationBar = HorizontalStackedBar(
+							float64(ad.Elevation.Ascents.Value),
+							b1,
+							float64(ad.Elevation.Descents.Value),
+							b2,
+							BAR_WIDTH)
+					}
+
+					temperatureTxt := common.NoDataText
+					temperatureBar := HorizontalBar(0, b1, 0, b0, BAR_WIDTH)
+					if ad.Temperature.Avg != nil && ad.Temperature.Max != nil {
+						temperatureTxt = col1("⌀ "+ad.Temperature.Avg.Format()) +
+							col2("max "+ad.Temperature.Max.Format())
+						temperatureBar = HorizontalBar(
+							float64(ad.Temperature.Avg.Value),
+							b1,
+							float64(ad.Temperature.Max.Value),
+							b0,
+							BAR_WIDTH)
+					}
+
+					gpsTxt := common.NoDataText
+					gpsBar := HorizontalBar(0, b1, 0, b0, BAR_WIDTH)
+					if ad.GpsAccuracy.Avg != nil && ad.GpsAccuracy.Max != nil {
+						gpsTxt = col1("⌀ "+ad.GpsAccuracy.Avg.Format()) +
+							col2("worse "+ad.GpsAccuracy.Max.Format())
+						gpsBar = HorizontalBar(
+							float64(ad.GpsAccuracy.Avg.Value),
+							b1,
+							float64(ad.GpsAccuracy.Max.Value),
+							b0,
+							BAR_WIDTH)
+					}
+
+					heartrateTxt := common.NoDataText
+					heartrateBar := HorizontalBar(0, b1, 0, b0, BAR_WIDTH)
 					if ad.Heartrate.Avg != nil && ad.Heartrate.Max != nil {
 						heartrateTxt = col1("⌀ "+ad.Heartrate.Avg.Format()) +
 							col2("max "+ad.Heartrate.Max.Format())
@@ -663,7 +720,7 @@ func (m Model) RightContentView() string {
 							float64(ad.Heartrate.Avg.Value),
 							b1,
 							float64(ad.Heartrate.Max.Value),
-							b2,
+							b0,
 							BAR_WIDTH)
 					}
 
@@ -680,7 +737,7 @@ func (m Model) RightContentView() string {
 						{"", temperatureBar},
 						{th("gps accuracy"), gpsTxt},
 						{"", gpsBar},
-						{th("♥rate"), heartrateTxt},
+						{th("♥ rate"), heartrateTxt},
 						{"", heartrateBar},
 						{th("sessions"), noSessionsText},
 						{th("records"), noRecordsText},
