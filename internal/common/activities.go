@@ -96,7 +96,7 @@ func NewDuration(value uint32) Duration {
 }
 
 type DurationStats struct {
-	Total, Active, Pause Duration
+	Total, Active, Pause *Duration
 }
 
 func (time Duration) Format() string {
@@ -313,7 +313,9 @@ func (act Activity) FinishTime() Time {
 func (act Activity) GetTotalDuration() Duration {
 	total := NewDuration(0)
 	if data, ok := asyncdata.Success(act.Data); ok {
-		total.Value += (*data).Duration.Total.Value
+		if (*data).Duration.Total != nil {
+			total.Value += (*data).Duration.Total.Value
+		}
 	}
 	return total
 }

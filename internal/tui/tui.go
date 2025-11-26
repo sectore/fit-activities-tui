@@ -614,19 +614,23 @@ func (m Model) RightContentView() string {
 					}
 				} else {
 					dateTxt := ad.StartTime().Format() + "-" + ad.FinishTime().FormatHhMm()
-					durationTxt := col1(ad.Duration.Active.Format())
-					pauseTxt := "pause " + ad.Duration.Pause.Format()
-					if ad.Duration.Pause.Value <= 0 {
-						pauseTxt = "(no pause)"
-					}
+					durationTxt := common.NoDataText
+					durationBar := HorizontalBar(0, b1, 0, b0, BAR_WIDTH)
+					if ad.Duration.Active != nil && ad.Duration.Pause != nil {
+						durationTxt = col1(ad.Duration.Active.Format())
+						pauseTxt := "pause " + ad.Duration.Pause.Format()
+						if ad.Duration.Pause.Value <= 0 {
+							pauseTxt = "(no pause)"
+						}
 
-					durationTxt += col2(pauseTxt)
-					durationBar := HorizontalStackedBar(
-						float64(ad.Duration.Active.Value),
-						b1,
-						float64(ad.Duration.Pause.Value),
-						b2,
-						BAR_WIDTH)
+						durationTxt += col2(pauseTxt)
+						durationBar = HorizontalStackedBar(
+							float64(ad.Duration.Active.Value),
+							b1,
+							float64(ad.Duration.Pause.Value),
+							b2,
+							BAR_WIDTH)
+					}
 
 					speedTxt := common.NoDataText
 					speedBar := HorizontalBar(0, b1, 0, b0, BAR_WIDTH)

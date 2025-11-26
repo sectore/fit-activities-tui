@@ -217,47 +217,58 @@ func ParseFile(file string) (*common.ActivityData, error) {
 	}
 
 	totalDistance := common.NewDistance(0)
-	durationStats := common.DurationStats{
-		Total:  common.NewDuration(0),
-		Active: common.NewDuration(0),
-		Pause:  common.NewDuration(0),
-	}
-
+	durationStats := common.DurationStats{}
 	elevationStats := common.ElevationStats{}
 
 	for _, s := range act.Sessions {
 		totalDistance.Value += s.TotalDistance
 
 		// Duration stats calculation
-		total := s.TotalElapsedTime
-		if total != basetype.Uint32Invalid {
-			durationStats.Total.Value += total
+		if s.TotalElapsedTime != basetype.Uint32Invalid {
+			value := s.TotalElapsedTime
+			if durationStats.Total == nil {
+				d := common.NewDuration(value)
+				durationStats.Total = &d
+			} else {
+				durationStats.Total.Value += value
+			}
 		}
-		active := s.TotalTimerTime
-		if active != basetype.Uint32Invalid {
-			durationStats.Active.Value += active
+		if s.TotalTimerTime != basetype.Uint32Invalid {
+			value := s.TotalTimerTime
+			if durationStats.Active == nil {
+				d := common.NewDuration(value)
+				durationStats.Active = &d
+			} else {
+				durationStats.Active.Value += value
+			}
 		}
 
 		// Elevation stats calculation
 		if s.TotalAscent != basetype.Uint16Invalid {
+			value := s.TotalAscent
 			if elevationStats.Ascents == nil {
-				elevationStats.Ascents = common.NewElevation(s.TotalAscent)
+				elevationStats.Ascents = common.NewElevation(value)
 			} else {
-				elevationStats.Ascents.Value += s.TotalAscent
+				elevationStats.Ascents.Value += value
 			}
 		}
 
 		if s.TotalDescent != basetype.Uint16Invalid {
+			value := s.TotalAscent
 			if elevationStats.Descents == nil {
-				elevationStats.Descents = common.NewElevation(s.TotalDescent)
+				elevationStats.Descents = common.NewElevation(value)
 			} else {
-				elevationStats.Descents.Value += s.TotalDescent
+				elevationStats.Descents.Value += value
 			}
 		}
 	}
 
 	// calculate pause
-	durationStats.Pause.Value = durationStats.Total.Value - durationStats.Active.Value
+	if durationStats.Total != nil && durationStats.Active != nil {
+		value := durationStats.Total.Value - durationStats.Active.Value
+		d := common.NewDuration(value)
+		durationStats.Pause = &d
+	}
 
 	var activityData = &common.ActivityData{
 		Duration:      durationStats,
