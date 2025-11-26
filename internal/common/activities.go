@@ -126,16 +126,19 @@ func (time Duration) Format() string {
 
 type Elevation struct{ Value uint16 }
 
-func NewElevation(value uint16) Elevation {
-	return Elevation{Value: value}
+func NewElevation(value uint16) *Elevation {
+	return &Elevation{Value: value}
 }
 
-func (e Elevation) Format() string {
+func (e *Elevation) Format() string {
+	if e == nil {
+		return NoDataText
+	}
 	return fmt.Sprintf("%dm", e.Value)
 }
 
 type ElevationStats struct {
-	Descents, Ascents Elevation
+	Descents, Ascents *Elevation
 }
 
 type Altitude struct{ Value float64 }

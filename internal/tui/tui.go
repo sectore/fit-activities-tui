@@ -641,14 +641,18 @@ func (m Model) RightContentView() string {
 
 					}
 
-					elevationTxt := col1(arrowTop+" "+ad.Elevation.Ascents.Format()) +
-						col2(arrowDown+" "+ad.Elevation.Descents.Format())
-					elevationBar := HorizontalStackedBar(
-						float64(ad.Elevation.Ascents.Value),
-						b1,
-						float64(ad.Elevation.Descents.Value),
-						b2,
-						BAR_WIDTH)
+					elevationTxt := common.NoDataText
+					elevationBar := HorizontalBar(0, b1, 0, b0, BAR_WIDTH)
+					if ad.Elevation.Ascents != nil && ad.Elevation.Descents != nil {
+						elevationTxt = col1(arrowTop+" "+ad.Elevation.Ascents.Format()) +
+							col2(arrowDown+" "+ad.Elevation.Descents.Format())
+						elevationBar = HorizontalStackedBar(
+							float64(ad.Elevation.Ascents.Value),
+							b1,
+							float64(ad.Elevation.Descents.Value),
+							b2,
+							BAR_WIDTH)
+					}
 
 					temperatureTxt := common.NoDataText
 					temperatureBar := HorizontalBar(0, b1, 0, b0, BAR_WIDTH)

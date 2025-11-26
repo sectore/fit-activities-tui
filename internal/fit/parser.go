@@ -222,10 +222,8 @@ func ParseFile(file string) (*common.ActivityData, error) {
 		Active: common.NewDuration(0),
 		Pause:  common.NewDuration(0),
 	}
-	elevationStats := common.ElevationStats{
-		Ascents:  common.NewElevation(0),
-		Descents: common.NewElevation(0),
-	}
+
+	elevationStats := common.ElevationStats{}
 
 	for _, s := range act.Sessions {
 		totalDistance.Value += s.TotalDistance
@@ -241,15 +239,23 @@ func ParseFile(file string) (*common.ActivityData, error) {
 		}
 
 		// Elevation stats calculation
-		ascentValue := s.TotalAscent
-		if ascentValue != basetype.Uint16Invalid {
-			elevationStats.Ascents.Value += ascentValue
+		if s.TotalAscent != basetype.Uint16Invalid {
+			if elevationStats.Ascents == nil {
+				elevationStats.Ascents = common.NewElevation(s.TotalAscent)
+			} else {
+				elevationStats.Ascents.Value += s.TotalAscent
+			}
 		}
-		descentValue := s.TotalDescent
-		if descentValue != basetype.Uint16Invalid {
-			elevationStats.Descents.Value += descentValue
+
+		if s.TotalDescent != basetype.Uint16Invalid {
+			if elevationStats.Descents == nil {
+				elevationStats.Descents = common.NewElevation(s.TotalDescent)
+			} else {
+				elevationStats.Descents.Value += s.TotalDescent
+			}
 		}
 	}
+
 	// calculate pause
 	durationStats.Pause.Value = durationStats.Total.Value - durationStats.Active.Value
 
