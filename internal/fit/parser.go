@@ -210,7 +210,7 @@ func ParseFile(file string) (*common.ActivityData, error) {
 
 	// Calculate `Speed` average
 	if speedCount > 0 {
-		speed := common.NewSpeed(float32(float64(speedSum) / float64(speedCount)))
+		speed := common.NewSpeed(float32(speedSum) / float32(speedCount))
 		speedStats.Avg = common.Ptr(speed)
 	}
 
