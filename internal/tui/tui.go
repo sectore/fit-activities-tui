@@ -535,6 +535,10 @@ func (m Model) RightContentView() string {
 						BAR_WIDTH)
 
 					speedTxt := col1("min") + col2("max")
+					speedBarTxt := common.NoDataText
+					if currentRecord.Speed != nil {
+						speedBarTxt = currentRecord.Speed.Format()
+					}
 					speedBar := HorizontalBar(0, b1, 0, b0, BAR_WIDTH)
 					if ad.Speed.Max != nil && currentRecord.Speed != nil {
 						speedBar = HorizontalBar(
@@ -546,6 +550,10 @@ func (m Model) RightContentView() string {
 					}
 
 					altitudeTxt := col1("min") + col2("max")
+					altitudeBarTxt := common.NoDataText
+					if currentRecord.Altitude != nil {
+						altitudeBarTxt = currentRecord.Altitude.Format()
+					}
 					altitudeBar := HorizontalBar(0, b1, 0, b0, BAR_WIDTH)
 					if ad.Altitude.Min != nil && ad.Altitude.Max != nil && currentRecord.Altitude != nil {
 						altitudeBar = HorizontalBarWithRange(
@@ -558,6 +566,10 @@ func (m Model) RightContentView() string {
 					}
 
 					temperatureTxt := col1("min") + col2("max")
+					temperatureBarTxt := common.NoDataText
+					if currentRecord.Temperature != nil {
+						temperatureBarTxt = currentRecord.Temperature.Format()
+					}
 					temperatureBar := HorizontalBar(0, b1, 0, b0, BAR_WIDTH)
 					if ad.Temperature.Min != nil && ad.Temperature.Max != nil && currentRecord.Temperature != nil {
 						temperatureBar = HorizontalBarWithRange(
@@ -570,6 +582,10 @@ func (m Model) RightContentView() string {
 					}
 
 					gpsTxt := col1("best") + col2("worst")
+					gpsBarTxt := common.NoDataText
+					if currentRecord.GpsAccuracy != nil {
+						gpsBarTxt = currentRecord.GpsAccuracy.Format()
+					}
 					gpsBar := HorizontalBar(0, b1, 0, b0, BAR_WIDTH)
 					if ad.GpsAccuracy.Min != nil && ad.GpsAccuracy.Max != nil && currentRecord.GpsAccuracy != nil {
 						gpsBar = HorizontalBarWithRange(
@@ -582,6 +598,10 @@ func (m Model) RightContentView() string {
 					}
 
 					heartrateTxt := col1("min") + col2("max")
+					heartrateBarTxt := common.NoDataText
+					if currentRecord.Heartrate != nil {
+						heartrateBarTxt = currentRecord.Heartrate.Format()
+					}
 					heartrateBar := HorizontalBar(0, b1, 0, b0, BAR_WIDTH)
 					if ad.Heartrate.Min != nil && ad.Heartrate.Max != nil && currentRecord.Heartrate != nil {
 						heartrateBar = HorizontalBarWithRange(
@@ -600,15 +620,15 @@ func (m Model) RightContentView() string {
 						{th("duration"), durationTxt},
 						{currentDuration.Format(), durationBar},
 						{th("speed"), speedTxt},
-						{currentRecord.Speed.Format(), speedBar},
+						{speedBarTxt, speedBar},
 						{th("altitude"), altitudeTxt},
-						{currentRecord.Altitude.Format(), altitudeBar},
+						{altitudeBarTxt, altitudeBar},
 						{th("temperature"), temperatureTxt},
-						{currentRecord.Temperature.Format(), temperatureBar},
+						{temperatureBarTxt, temperatureBar},
 						{th("gps accuracy"), gpsTxt},
-						{currentRecord.GpsAccuracy.Format(), gpsBar},
+						{gpsBarTxt, gpsBar},
 						{th("♥ rate"), heartrateTxt},
-						{currentRecord.Heartrate.Format(), heartrateBar},
+						{heartrateBarTxt, heartrateBar},
 						{th("sessions"), noSessionsText},
 						{th("record"), fmt.Sprint(act.RecordIndex()+1) + " of " + noRecordsText},
 					}

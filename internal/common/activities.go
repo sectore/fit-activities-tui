@@ -10,9 +10,12 @@ import (
 	"github.com/sectore/fit-activities-tui/internal/asyncdata"
 )
 
-const (
-	NoDataText = "no data"
-)
+const NoDataText = "no data"
+
+// Helper to create a pointer to given value
+func Ptr[T any](v T) *T {
+	return &v
+}
 
 type Time struct{ Value time.Time }
 
@@ -38,14 +41,11 @@ func (t Time) FormatHhMmSs() string {
 
 type Temperature struct{ Value int8 }
 
-func NewTemperature(value int8) *Temperature {
-	return &Temperature{Value: value}
+func NewTemperature(value int8) Temperature {
+	return Temperature{Value: value}
 }
 
-func (t *Temperature) Format() string {
-	if t == nil {
-		return NoDataText
-	}
+func (t Temperature) Format() string {
 	return fmt.Sprintf("%0d°C", t.Value)
 }
 
@@ -55,14 +55,11 @@ type TemperatureStats struct {
 
 type GpsAccuracy struct{ Value uint8 }
 
-func NewGpsAccuracy(value uint8) *GpsAccuracy {
-	return &GpsAccuracy{Value: value}
+func NewGpsAccuracy(value uint8) GpsAccuracy {
+	return GpsAccuracy{Value: value}
 }
 
-func (ga *GpsAccuracy) Format() string {
-	if ga == nil {
-		return NoDataText
-	}
+func (ga GpsAccuracy) Format() string {
 	return fmt.Sprintf("%dm", ga.Value)
 }
 
@@ -72,14 +69,11 @@ type GpsAccuracyStats struct {
 
 type Speed struct{ Value float32 }
 
-func NewSpeed(value float32) *Speed {
-	return &Speed{Value: value}
+func NewSpeed(value float32) Speed {
+	return Speed{Value: value}
 }
 
-func (s *Speed) Format() string {
-	if s == nil {
-		return NoDataText
-	}
+func (s Speed) Format() string {
 	return fmt.Sprintf("%.1fkm/h", s.Value*3.6/1000)
 }
 
@@ -126,14 +120,11 @@ func (time Duration) Format() string {
 
 type Elevation struct{ Value uint16 }
 
-func NewElevation(value uint16) *Elevation {
-	return &Elevation{Value: value}
+func NewElevation(value uint16) Elevation {
+	return Elevation{Value: value}
 }
 
-func (e *Elevation) Format() string {
-	if e == nil {
-		return NoDataText
-	}
+func (e Elevation) Format() string {
 	return fmt.Sprintf("%dm", e.Value)
 }
 
@@ -143,14 +134,11 @@ type ElevationStats struct {
 
 type Altitude struct{ Value float64 }
 
-func NewAltitude(value float64) *Altitude {
-	return &Altitude{Value: value}
+func NewAltitude(value float64) Altitude {
+	return Altitude{Value: value}
 }
 
-func (a *Altitude) Format() string {
-	if a == nil {
-		return NoDataText
-	}
+func (a Altitude) Format() string {
 	if a.Value == 0 {
 		return "0m"
 	}
@@ -205,14 +193,11 @@ func (d Distance) format(decimal int) string {
 
 type Heartrate struct{ Value uint8 }
 
-func NewHeartrate(value uint8) *Heartrate {
-	return &Heartrate{Value: value}
+func NewHeartrate(value uint8) Heartrate {
+	return Heartrate{Value: value}
 }
 
-func (hr *Heartrate) Format() string {
-	if hr == nil {
-		return NoDataText
-	}
+func (hr Heartrate) Format() string {
 	return fmt.Sprintf("%dbpm", hr.Value)
 }
 

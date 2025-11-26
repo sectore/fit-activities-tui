@@ -62,50 +62,52 @@ func ParseFile(file string) (*common.ActivityData, error) {
 	var heartrateSum, heartrateCount uint
 
 	for _, r := range act.Records {
-
 		// Use `EnhancedAltitudeScaled` if available, otherwise fallback to `AltitudeScaled`
 		// This ensures compatibility (Garmin vs. Wahoo)
-		var altitude *common.Altitude
+		var altitudePtr *common.Altitude
 		if math.Float64bits(r.EnhancedAltitudeScaled()) != basetype.Float64Invalid {
-			altitude = common.NewAltitude(r.EnhancedAltitudeScaled())
+			altitude := common.NewAltitude(r.EnhancedAltitudeScaled())
+			altitudePtr = common.Ptr(altitude)
 		} else if math.Float64bits(r.AltitudeScaled()) != basetype.Float64Invalid {
-			altitude = common.NewAltitude(r.AltitudeScaled())
+			altitude := common.NewAltitude(r.AltitudeScaled())
+			altitudePtr = common.Ptr(altitude)
 		}
 
-		if altitude != nil {
+		if altitudePtr != nil {
 			// `AltitudeStats` calculation
 			// initialize `max`/`min` on first valid `Altitude`
 			if altitudeCount == 0 {
-				altitudeStats.Min = altitude
-				altitudeStats.Max = altitude
+				altitudeStats.Min = altitudePtr
+				altitudeStats.Max = altitudePtr
 			}
 
-			if altitude.Value < altitudeStats.Min.Value {
-				altitudeStats.Min = altitude
+			if altitudePtr.Value < altitudeStats.Min.Value {
+				altitudeStats.Min = altitudePtr
 			}
-			if altitude.Value > altitudeStats.Max.Value {
-				altitudeStats.Max = altitude
+			if altitudePtr.Value > altitudeStats.Max.Value {
+				altitudeStats.Max = altitudePtr
 			}
 
 			altitudeCount += 1
 		}
 
-		var temperature *common.Temperature
+		var temperaturePtr *common.Temperature
 		if r.Temperature != basetype.Sint8Invalid {
-			temperature = common.NewTemperature(r.Temperature)
+			temperature := common.NewTemperature(r.Temperature)
+			temperaturePtr = common.Ptr(temperature)
 			// `Temperature` stats calculation
 			// initialize min/max on first valid `Temperature`
 			if tempCount == 0 {
-				temperatureStats.Min = temperature
-				temperatureStats.Max = temperature
+				temperatureStats.Min = temperaturePtr
+				temperatureStats.Max = temperaturePtr
 			}
 			// compare min
 			if temperature.Value < temperatureStats.Min.Value {
-				temperatureStats.Min = temperature
+				temperatureStats.Min = temperaturePtr
 			}
 			// compare max
 			if temperature.Value > temperatureStats.Max.Value {
-				temperatureStats.Max = temperature
+				temperatureStats.Max = temperaturePtr
 			}
 			tempCount += 1
 			tempSum += int(temperature.Value)
@@ -116,66 +118,70 @@ func ParseFile(file string) (*common.ActivityData, error) {
 			distance = 0
 		}
 
-		var speed *common.Speed
+		var speedPtr *common.Speed
 		// Use `EnhancedSpeed` if available, otherwise fallback to `Speed`
 		// This ensures compatibility (Garmin: `EnhancedSpeed`, Wahoo: both)
 		if r.EnhancedSpeed != basetype.Uint32Invalid {
-			speed = common.NewSpeed(float32(r.EnhancedSpeed))
+			speed := common.NewSpeed(float32(r.EnhancedSpeed))
+			speedPtr = common.Ptr(speed)
 		} else if r.Speed != basetype.Uint16Invalid {
-			speed = common.NewSpeed(float32(r.Speed))
+			speed := common.NewSpeed(float32(r.Speed))
+			speedPtr = common.Ptr(speed)
 		}
 
-		if speed != nil {
+		if speedPtr != nil {
 			// `SpeedStats` calculation
 			// initialize `max` on first valid `Speed`
 			if speedCount == 0 {
-				speedStats.Max = speed
+				speedStats.Max = speedPtr
 			}
 
-			if speedStats.Max.Value < speed.Value {
-				speedStats.Max = speed
+			if speedStats.Max.Value < speedPtr.Value {
+				speedStats.Max = speedPtr
 			}
 			speedCount += 1
-			speedTotal += uint(speed.Value)
+			speedTotal += uint(speedPtr.Value)
 		}
 
-		var gpsAccuracy *common.GpsAccuracy
+		var gpsAccuracyPtr *common.GpsAccuracy
 		if r.GpsAccuracy != basetype.Uint8Invalid {
-			gpsAccuracy = common.NewGpsAccuracy(r.GpsAccuracy)
+			gpsAccuracy := common.NewGpsAccuracy(r.GpsAccuracy)
+			gpsAccuracyPtr = common.Ptr(gpsAccuracy)
 			// `GpsAccuracyStats` calculation
 			// initialize min/max on first valid `GpsAccuracy`
 			if gpsCount == 0 {
-				gpsAccuracyStats.Min = gpsAccuracy
-				gpsAccuracyStats.Max = gpsAccuracy
+				gpsAccuracyStats.Min = gpsAccuracyPtr
+				gpsAccuracyStats.Max = gpsAccuracyPtr
 			}
 			// compare min
 			if gpsAccuracy.Value < gpsAccuracyStats.Min.Value {
-				gpsAccuracyStats.Min = gpsAccuracy
+				gpsAccuracyStats.Min = gpsAccuracyPtr
 			}
 			// compare max
 			if gpsAccuracy.Value > gpsAccuracyStats.Max.Value {
-				gpsAccuracyStats.Max = gpsAccuracy
+				gpsAccuracyStats.Max = gpsAccuracyPtr
 			}
 			gpsCount += 1
 			gpsSum += uint(gpsAccuracy.Value)
 		}
 
-		var heartrate *common.Heartrate
+		var heartratePtr *common.Heartrate
 		if r.HeartRate != basetype.Uint8Invalid {
-			heartrate = common.NewHeartrate(r.HeartRate)
+			heartrate := common.NewHeartrate(r.HeartRate)
+			heartratePtr = common.Ptr(heartrate)
 			// `HeartrateStats` calculation
 			// initialize min/max on first valid `Heartrate`
 			if heartrateCount == 0 {
-				heartrateStats.Min = heartrate
-				heartrateStats.Max = heartrate
+				heartrateStats.Min = heartratePtr
+				heartrateStats.Max = heartratePtr
 			}
 			// compare min
 			if heartrate.Value < heartrateStats.Min.Value {
-				heartrateStats.Min = heartrate
+				heartrateStats.Min = heartratePtr
 			}
 			// compare max
 			if heartrate.Value > heartrateStats.Max.Value {
-				heartrateStats.Max = heartrate
+				heartrateStats.Max = heartratePtr
 			}
 			heartrateCount += 1
 			heartrateSum += uint(heartrate.Value)
@@ -184,11 +190,11 @@ func ParseFile(file string) (*common.ActivityData, error) {
 		record := common.RecordData{
 			Time:        common.NewTime(r.Timestamp.Local()),
 			Distance:    common.NewDistance(distance),
-			Speed:       speed,
-			Temperature: temperature,
-			Altitude:    altitude,
-			GpsAccuracy: gpsAccuracy,
-			Heartrate:   heartrate,
+			Speed:       speedPtr,
+			Temperature: temperaturePtr,
+			Altitude:    altitudePtr,
+			GpsAccuracy: gpsAccuracyPtr,
+			Heartrate:   heartratePtr,
 		}
 		records = append(records, record)
 
@@ -196,24 +202,28 @@ func ParseFile(file string) (*common.ActivityData, error) {
 
 	// Calculate `Speed` average
 	if speedCount > 0 {
-		speedStats.Avg = common.NewSpeed(float32(speedTotal / speedCount))
+		speed := common.NewSpeed(float32(speedTotal / speedCount))
+		speedStats.Avg = common.Ptr(speed)
 	}
 
 	// Calculate `Temperature` average
 	// Use `math.Round` for symmetric handling: truncation has sign-dependent bias
 	// (positive: 16.5°C → 16°C; negative: -0.5°C → 0°C truncates toward zero)
 	if tempCount > 0 {
-		temperatureStats.Avg = common.NewTemperature(int8(math.Round(float64(tempSum) / float64(tempCount))))
+		temperature := common.NewTemperature(int8(math.Round(float64(tempSum) / float64(tempCount))))
+		temperatureStats.Avg = common.Ptr(temperature)
 	}
 
 	// Calculate `GpsAccuracy` average
 	if gpsCount > 0 {
-		gpsAccuracyStats.Avg = common.NewGpsAccuracy(uint8(float32(gpsSum) / float32(gpsCount)))
+		gpsAccuracy := common.NewGpsAccuracy(uint8(float32(gpsSum) / float32(gpsCount)))
+		gpsAccuracyStats.Avg = common.Ptr(gpsAccuracy)
 	}
 
 	// Calculate `Heartrate` average
 	if heartrateCount > 0 {
-		heartrateStats.Avg = common.NewHeartrate(uint8(float32(heartrateSum) / float32(heartrateCount)))
+		heartrate := common.NewHeartrate(uint8(float32(heartrateSum) / float32(heartrateCount)))
+		heartrateStats.Avg = common.Ptr(heartrate)
 	}
 
 	totalDistance := common.NewDistance(0)
@@ -228,8 +238,9 @@ func ParseFile(file string) (*common.ActivityData, error) {
 			value := s.TotalElapsedTime
 			if durationStats.Total == nil {
 				d := common.NewDuration(value)
-				durationStats.Total = &d
+				durationStats.Total = common.Ptr(d)
 			} else {
+				// update inner `Value`
 				durationStats.Total.Value += value
 			}
 		}
@@ -237,8 +248,9 @@ func ParseFile(file string) (*common.ActivityData, error) {
 			value := s.TotalTimerTime
 			if durationStats.Active == nil {
 				d := common.NewDuration(value)
-				durationStats.Active = &d
+				durationStats.Active = common.Ptr(d)
 			} else {
+				// update inner `Value`
 				durationStats.Active.Value += value
 			}
 		}
@@ -247,8 +259,10 @@ func ParseFile(file string) (*common.ActivityData, error) {
 		if s.TotalAscent != basetype.Uint16Invalid {
 			value := s.TotalAscent
 			if elevationStats.Ascents == nil {
-				elevationStats.Ascents = common.NewElevation(value)
+				e := common.NewElevation(value)
+				elevationStats.Ascents = common.Ptr(e)
 			} else {
+				// update inner `Value`
 				elevationStats.Ascents.Value += value
 			}
 		}
@@ -256,8 +270,10 @@ func ParseFile(file string) (*common.ActivityData, error) {
 		if s.TotalDescent != basetype.Uint16Invalid {
 			value := s.TotalAscent
 			if elevationStats.Descents == nil {
-				elevationStats.Descents = common.NewElevation(value)
+				e := common.NewElevation(value)
+				elevationStats.Descents = common.Ptr(e)
 			} else {
+				// update inner `Value`
 				elevationStats.Descents.Value += value
 			}
 		}
@@ -265,9 +281,8 @@ func ParseFile(file string) (*common.ActivityData, error) {
 
 	// calculate pause
 	if durationStats.Total != nil && durationStats.Active != nil {
-		value := durationStats.Total.Value - durationStats.Active.Value
-		d := common.NewDuration(value)
-		durationStats.Pause = &d
+		d := common.NewDuration(durationStats.Total.Value - durationStats.Active.Value)
+		durationStats.Pause = common.Ptr(d)
 	}
 
 	var activityData = &common.ActivityData{
