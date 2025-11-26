@@ -279,7 +279,7 @@ func ParseFile(file string) (*common.ActivityData, error) {
 		}
 
 		if s.TotalDescent != basetype.Uint16Invalid {
-			value := s.TotalAscent
+			value := s.TotalDescent
 			if elevationStats.Descents == nil {
 				e := common.NewElevation(value)
 				elevationStats.Descents = common.Ptr(e)
