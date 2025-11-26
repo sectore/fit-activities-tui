@@ -46,10 +46,11 @@ func ParseFile(file string) (*common.ActivityData, error) {
 
 	var records []common.RecordData
 	speedStats := common.SpeedStats{}
-	var speedCount, speedTotal uint
+	var speedCount uint
+	var speedSum uint64
 
 	temperatureStats := common.TemperatureStats{}
-	var tempSum int
+	var tempSum int64
 	var tempCount uint
 
 	gpsAccuracyStats := common.GpsAccuracyStats{}
@@ -110,7 +111,7 @@ func ParseFile(file string) (*common.ActivityData, error) {
 				temperatureStats.Max = temperaturePtr
 			}
 			tempCount += 1
-			tempSum += int(temperature.Value)
+			tempSum += int64(temperature.Value)
 		}
 
 		var distancePtr *common.Distance
@@ -141,7 +142,7 @@ func ParseFile(file string) (*common.ActivityData, error) {
 				speedStats.Max = speedPtr
 			}
 			speedCount += 1
-			speedTotal += uint(speedPtr.Value)
+			speedSum += uint64(speedPtr.Value)
 		}
 
 		var gpsAccuracyPtr *common.GpsAccuracy
@@ -209,7 +210,7 @@ func ParseFile(file string) (*common.ActivityData, error) {
 
 	// Calculate `Speed` average
 	if speedCount > 0 {
-		speed := common.NewSpeed(float32(speedTotal / speedCount))
+		speed := common.NewSpeed(float32(float64(speedSum) / float64(speedCount)))
 		speedStats.Avg = common.Ptr(speed)
 	}
 

@@ -350,7 +350,7 @@ func (act *Activity) RPS() float64 {
 	if data, ok := asyncdata.Success(act.Data); ok {
 		if data.Duration.Total != nil {
 			totalDurationMs := float64(data.Duration.Total.Value)
-			recordCount := float64(len(data.Records))
+			recordCount := float64(data.NoRecords())
 
 			if totalDurationMs > 0 && recordCount > 0 {
 				// ms to seconds
@@ -405,15 +405,13 @@ var SortByDistance = func(act1, act2 *Activity) bool {
 }
 
 var SortByTime = func(act1, act2 *Activity) bool {
-	startTime1Ptr := act1.StartTime()
-	if startTime1Ptr == nil {
-		t := NewTime(defaultTime)
-		startTime1Ptr = Ptr(t)
+	t1 := defaultTime
+	if st1 := act1.StartTime(); st1 != nil {
+		t1 = st1.Value
 	}
-	startTime2Ptr := act2.StartTime()
-	if startTime2Ptr == nil {
-		t := NewTime(defaultTime)
-		startTime2Ptr = Ptr(t)
+	t2 := defaultTime
+	if st2 := act2.StartTime(); st2 != nil {
+		t2 = st2.Value
 	}
-	return startTime1Ptr.Value.Before(startTime2Ptr.Value)
+	return t1.Before(t2)
 }
