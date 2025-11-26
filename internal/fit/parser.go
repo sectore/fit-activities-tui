@@ -55,10 +55,7 @@ func ParseFile(file string) (*common.ActivityData, error) {
 	gpsAccuracyStats := common.GpsAccuracyStats{}
 	var gpsSum, gpsCount uint
 
-	altitudeStats := common.AltitudeStats{
-		Min: common.NewAltitude(0),
-		Max: common.NewAltitude(0),
-	}
+	altitudeStats := common.AltitudeStats{}
 	var altitudeCount uint
 
 	heartrateStats := common.HeartrateStats{}
@@ -66,14 +63,31 @@ func ParseFile(file string) (*common.ActivityData, error) {
 
 	for _, r := range act.Records {
 
-		// Use `EnhancedAltitude` if available, otherwise fallback to `Altitude`
+		// Use `EnhancedAltitudeScaled` if available, otherwise fallback to `AltitudeScaled`
 		// This ensures compatibility (Garmin vs. Wahoo)
-		altitudeValue := r.EnhancedAltitudeScaled()
-		if math.Float64bits(altitudeValue) == basetype.Float64Invalid {
-			altitudeValue = r.AltitudeScaled()
-			if math.Float64bits(altitudeValue) == basetype.Float64Invalid {
-				altitudeValue = 0
+		var altitude *common.Altitude
+		if math.Float64bits(r.EnhancedAltitudeScaled()) != basetype.Float64Invalid {
+			altitude = common.NewAltitude(r.EnhancedAltitudeScaled())
+		} else if math.Float64bits(r.AltitudeScaled()) != basetype.Float64Invalid {
+			altitude = common.NewAltitude(r.AltitudeScaled())
+		}
+
+		if altitude != nil {
+			// `AltitudeStats` calculation
+			// initialize `max`/`min` on first valid `Altitude`
+			if altitudeCount == 0 {
+				altitudeStats.Min = altitude
+				altitudeStats.Max = altitude
 			}
+
+			if altitude.Value < altitudeStats.Min.Value {
+				altitudeStats.Min = altitude
+			}
+			if altitude.Value > altitudeStats.Max.Value {
+				altitudeStats.Max = altitude
+			}
+
+			altitudeCount += 1
 		}
 
 		var temperature *common.Temperature
@@ -172,26 +186,11 @@ func ParseFile(file string) (*common.ActivityData, error) {
 			Distance:    common.NewDistance(distance),
 			Speed:       speed,
 			Temperature: temperature,
-			Altitude:    common.NewAltitude(altitudeValue),
+			Altitude:    altitude,
 			GpsAccuracy: gpsAccuracy,
 			Heartrate:   heartrate,
 		}
 		records = append(records, record)
-
-		// Altitude stats calculation
-		// Note: Since `altitudeValue` is already validated above
-		// we don't check for invalid values here
-		if altitudeCount == 0 {
-			altitudeStats.Min.Value = altitudeValue
-			altitudeStats.Max.Value = altitudeValue
-		}
-		if altitudeValue < altitudeStats.Min.Value {
-			altitudeStats.Min.Value = altitudeValue
-		}
-		if altitudeValue > altitudeStats.Max.Value {
-			altitudeStats.Max.Value = altitudeValue
-		}
-		altitudeCount += 1
 
 	}
 

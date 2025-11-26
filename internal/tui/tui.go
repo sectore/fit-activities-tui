@@ -3,7 +3,6 @@ package tui
 import (
 	"fmt"
 	"log"
-	"math"
 	"path/filepath"
 	"strings"
 	"time"
@@ -546,16 +545,17 @@ func (m Model) RightContentView() string {
 							BAR_WIDTH)
 					}
 
-					minAltitude := math.Min(float64(ad.Altitude.Min.Value), 0)
-					altitudeTxt := col1("min") +
-						col2("max")
-					altitudeBar := HorizontalBarWithRange(
-						float64(currentRecord.Altitude.Value),
-						b1,
-						minAltitude,
-						float64(ad.Altitude.Max.Value),
-						b0,
-						BAR_WIDTH)
+					altitudeTxt := col1("min") + col2("max")
+					altitudeBar := HorizontalBar(0, b1, 0, b0, BAR_WIDTH)
+					if ad.Altitude.Min != nil && ad.Altitude.Max != nil && currentRecord.Altitude != nil {
+						altitudeBar = HorizontalBarWithRange(
+							float64(currentRecord.Altitude.Value),
+							b1,
+							ad.Altitude.Min.Value,
+							float64(ad.Altitude.Max.Value),
+							b0,
+							BAR_WIDTH)
+					}
 
 					temperatureTxt := col1("min") + col2("max")
 					temperatureBar := HorizontalBar(0, b1, 0, b0, BAR_WIDTH)
@@ -568,6 +568,7 @@ func (m Model) RightContentView() string {
 							b0,
 							BAR_WIDTH)
 					}
+
 					gpsTxt := col1("best") + col2("worst")
 					gpsBar := HorizontalBar(0, b1, 0, b0, BAR_WIDTH)
 					if ad.GpsAccuracy.Min != nil && ad.GpsAccuracy.Max != nil && currentRecord.GpsAccuracy != nil {
@@ -579,6 +580,7 @@ func (m Model) RightContentView() string {
 							b0,
 							BAR_WIDTH)
 					}
+
 					heartrateTxt := col1("min") + col2("max")
 					heartrateBar := HorizontalBar(0, b1, 0, b0, BAR_WIDTH)
 					if ad.Heartrate.Min != nil && ad.Heartrate.Max != nil && currentRecord.Heartrate != nil {
@@ -617,6 +619,7 @@ func (m Model) RightContentView() string {
 					if ad.Duration.Pause.Value <= 0 {
 						pauseTxt = "(no pause)"
 					}
+
 					durationTxt += col2(pauseTxt)
 					durationBar := HorizontalStackedBar(
 						float64(ad.Duration.Active.Value),
@@ -624,6 +627,7 @@ func (m Model) RightContentView() string {
 						float64(ad.Duration.Pause.Value),
 						b2,
 						BAR_WIDTH)
+
 					speedTxt := common.NoDataText
 					speedBar := HorizontalBar(0, b1, 0, b0, BAR_WIDTH)
 					if ad.Speed.Avg != nil && ad.Speed.Max != nil {
@@ -636,6 +640,7 @@ func (m Model) RightContentView() string {
 							BAR_WIDTH)
 
 					}
+
 					elevationTxt := col1(arrowTop+" "+ad.Elevation.Ascents.Format()) +
 						col2(arrowDown+" "+ad.Elevation.Descents.Format())
 					elevationBar := HorizontalStackedBar(
@@ -644,6 +649,7 @@ func (m Model) RightContentView() string {
 						float64(ad.Elevation.Descents.Value),
 						b2,
 						BAR_WIDTH)
+
 					temperatureTxt := common.NoDataText
 					temperatureBar := HorizontalBar(0, b1, 0, b0, BAR_WIDTH)
 					if ad.Temperature.Avg != nil && ad.Temperature.Max != nil {
@@ -656,6 +662,7 @@ func (m Model) RightContentView() string {
 							b0,
 							BAR_WIDTH)
 					}
+
 					gpsTxt := common.NoDataText
 					gpsBar := HorizontalBar(0, b1, 0, b0, BAR_WIDTH)
 					if ad.GpsAccuracy.Avg != nil && ad.GpsAccuracy.Max != nil {
@@ -668,6 +675,7 @@ func (m Model) RightContentView() string {
 							b0,
 							BAR_WIDTH)
 					}
+
 					heartrateTxt := common.NoDataText
 					heartrateBar := HorizontalBar(0, b1, 0, b0, BAR_WIDTH)
 					if ad.Heartrate.Avg != nil && ad.Heartrate.Max != nil {

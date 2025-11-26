@@ -140,11 +140,14 @@ type ElevationStats struct {
 
 type Altitude struct{ Value float64 }
 
-func NewAltitude(value float64) Altitude {
-	return Altitude{Value: value}
+func NewAltitude(value float64) *Altitude {
+	return &Altitude{Value: value}
 }
 
-func (a Altitude) Format() string {
+func (a *Altitude) Format() string {
+	if a == nil {
+		return NoDataText
+	}
 	if a.Value == 0 {
 		return "0m"
 	}
@@ -152,7 +155,7 @@ func (a Altitude) Format() string {
 }
 
 type AltitudeStats struct {
-	Min, Max Altitude
+	Min, Max *Altitude
 }
 
 type Distance struct{ Value uint32 }
@@ -220,7 +223,7 @@ type RecordData struct {
 	Speed       *Speed
 	Temperature *Temperature
 	GpsAccuracy *GpsAccuracy
-	Altitude    Altitude
+	Altitude    *Altitude
 	Heartrate   *Heartrate
 }
 
