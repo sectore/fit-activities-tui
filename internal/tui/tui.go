@@ -527,16 +527,21 @@ func (m Model) RightContentView() string {
 							BAR_WIDTH)
 					}
 
-					currentDuration := TimeToDuration(ad.StartTime(), currentRecord.Time)
-					finalDuration := TimeToDuration(ad.StartTime(), ad.FinishTime())
-					durationTxt := col1("start") +
-						col2("finish")
-					durationBar := HorizontalBar(
-						float64(currentDuration.Value),
-						b1,
-						float64(finalDuration.Value),
-						b0,
-						BAR_WIDTH)
+					durationTxt := col1("start") + col2("finish")
+					durationBarTxt := common.NoDataText
+					startTime := ad.StartTime()
+					finishTime := ad.FinishTime()
+					durationBar := HorizontalBar(0, b1, 0, b0, BAR_WIDTH)
+					if startTime != nil && finishTime != nil {
+						currentDuration := TimeToDuration(*startTime, currentRecord.Time)
+						finalDuration := TimeToDuration(*startTime, *finishTime)
+						durationBar = HorizontalBar(
+							float64(currentDuration.Value),
+							b1,
+							float64(finalDuration.Value),
+							b0,
+							BAR_WIDTH)
+					}
 
 					speedTxt := col1("min") + col2("max")
 					speedBarTxt := common.NoDataText
@@ -612,7 +617,7 @@ func (m Model) RightContentView() string {
 						{th("distance"), distanceTxt},
 						{distanceBarTxt, distanceBar},
 						{th("duration"), durationTxt},
-						{currentDuration.Format(), durationBar},
+						{durationBarTxt, durationBar},
 						{th("speed"), speedTxt},
 						{speedBarTxt, speedBar},
 						{th("altitude"), altitudeTxt},
@@ -627,7 +632,11 @@ func (m Model) RightContentView() string {
 						{th("record"), fmt.Sprint(act.RecordIndex()+1) + " of " + noRecordsText},
 					}
 				} else {
-					dateTxt := ad.StartTime().Format() + "-" + ad.FinishTime().FormatHhMm()
+					dateTxt := common.NoDataText
+					if ad.StartTime() != nil && ad.FinishTime() != nil {
+						dateTxt = ad.StartTime().Format() + "-" + ad.FinishTime().FormatHhMm()
+
+					}
 					durationTxt := common.NoDataText
 					durationBar := HorizontalBar(0, b1, 0, b0, BAR_WIDTH)
 					if ad.Duration.Active != nil && ad.Duration.Pause != nil {

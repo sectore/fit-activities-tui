@@ -232,13 +232,19 @@ func (ad ActivityData) NoRecords() int {
 	return len(ad.Records)
 }
 
-func (ad ActivityData) StartTime() Time {
-	return ad.Records[0].Time
+func (ad ActivityData) StartTime() *Time {
+	if ad.NoRecords() == 0 {
+		return nil
+	}
+	return &ad.Records[0].Time
 }
 
-func (ad ActivityData) FinishTime() Time {
+func (ad ActivityData) FinishTime() *Time {
+	if ad.NoRecords() == 0 {
+		return nil
+	}
 	last := max(ad.NoRecords()-1, 0)
-	return ad.Records[last].Time
+	return &ad.Records[last].Time
 }
 
 type ActivityAD = asyncdata.AsyncData[error, ActivityData]
@@ -253,7 +259,9 @@ type Activity struct {
 func (act Activity) FilterValue() string {
 	var value string
 	if data, ok := asyncdata.Success(act.Data); ok {
-		value = data.StartTime().Format()
+		if startTime := data.StartTime(); startTime != nil {
+			value = startTime.Format()
+		}
 	}
 	return value
 
@@ -262,7 +270,9 @@ func (act Activity) FilterValue() string {
 func (act Activity) Title() string {
 	var title string
 	if data, ok := asyncdata.Success(act.Data); ok {
-		title = data.StartTime().Format()
+		if startTime := data.StartTime(); startTime != nil {
+			title = startTime.Format()
+		}
 	}
 	return title
 }
@@ -283,18 +293,11 @@ func (act Activity) TotalDistance() Distance {
 // default time: January 1, 1970 UTC
 var defaultTime = time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC)
 
-func (act Activity) StartTime() Time {
+func (act Activity) StartTime() *Time {
 	if data, ok := asyncdata.Success(act.Data); ok {
 		return data.StartTime()
 	}
-	return NewTime(defaultTime)
-}
-
-func (act Activity) FinishTime() Time {
-	if data, ok := asyncdata.Success(act.Data); ok {
-		return data.FinishTime()
-	}
-	return NewTime(defaultTime)
+	return nil
 }
 
 func (act Activity) GetTotalDuration() Duration {
@@ -402,5 +405,15 @@ var SortByDistance = func(act1, act2 *Activity) bool {
 }
 
 var SortByTime = func(act1, act2 *Activity) bool {
-	return act1.StartTime().Value.Before(act2.StartTime().Value)
+	startTime1Ptr := act1.StartTime()
+	if startTime1Ptr == nil {
+		t := NewTime(defaultTime)
+		startTime1Ptr = Ptr(t)
+	}
+	startTime2Ptr := act2.StartTime()
+	if startTime2Ptr == nil {
+		t := NewTime(defaultTime)
+		startTime2Ptr = Ptr(t)
+	}
+	return startTime1Ptr.Value.Before(startTime2Ptr.Value)
 }
