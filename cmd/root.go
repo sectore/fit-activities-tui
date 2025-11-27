@@ -7,6 +7,7 @@ import (
 	"os"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/sectore/fit-activities-tui/internal/fit"
 	"github.com/sectore/fit-activities-tui/internal/tui"
 	"github.com/spf13/cobra"
 )
@@ -24,6 +25,11 @@ var rootCmd = &cobra.Command{
 			path = d
 		}
 
+		filePaths, err := fit.GetFitFilePaths(path)
+		if err != nil {
+			return fmt.Errorf("%v", err)
+		}
+
 		doLogging, _ := cmd.Flags().GetBool("log")
 		if doLogging {
 			f, err := tea.LogToFile("debug.log", "debug")
@@ -38,10 +44,10 @@ var rootCmd = &cobra.Command{
 		}
 
 		program := tea.NewProgram(
-			tui.InitialModel(path),
+			tui.InitialModel(filePaths),
 			tea.WithAltScreen(),
 		)
-		_, err := program.Run()
+		_, err = program.Run()
 		if err != nil {
 			return fmt.Errorf("Could not run program: %v", err)
 		}
@@ -53,11 +59,11 @@ var rootCmd = &cobra.Command{
 
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
-		fmt.Println(err)
 		os.Exit(1)
 	}
 }
+
 func init() {
-	rootCmd.PersistentFlags().StringP("import", "i", "", "path to single FIT file or directory of FIT files to import")
-	rootCmd.PersistentFlags().Bool("log", false, "enable logging to store logs into 'debug.log'")
+	rootCmd.PersistentFlags().StringP("import", "i", "", "Path to directory or single FIT file or glob patterns (e.g., '2025-11*.fit', 'dir/*ice*.fit'). Put path in quotes; use full paths (no shorthands)")
+	rootCmd.PersistentFlags().Bool("log", false, "Enable logging to store logs into 'debug.log'")
 }
