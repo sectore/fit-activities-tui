@@ -27,16 +27,16 @@ const (
 )
 
 type Model struct {
-	importPath  string
-	importIndex int
-	activities  common.Activities
-	errMsgs     []error
-	spinner     spinner.Model
-	list        list.Model
-	width       int
-	height      int
-	showMenu    bool
-	actsSort    ActsSort
+	importFilePaths []string
+	importIndex     int
+	activities      common.Activities
+	errMsgs         []error
+	spinner         spinner.Model
+	list            list.Model
+	width           int
+	height          int
+	showMenu        bool
+	actsSort        ActsSort
 	// live data
 	showLiveData       bool
 	playLiveData       bool
@@ -72,7 +72,7 @@ var (
 	br                = lipgloss.NewStyle().SetString("\n").String()
 )
 
-func InitialModel(path string) Model {
+func InitialModel(filePaths []string) Model {
 
 	s := spinner.New()
 	s.Spinner = spinner.MiniDot
@@ -122,7 +122,7 @@ func InitialModel(path string) Model {
 	l.SetShowStatusBar(false)
 
 	return Model{
-		importPath:         path,
+		importFilePaths:    filePaths,
 		importIndex:        0,
 		activities:         common.Activities{},
 		spinner:            s,
@@ -139,7 +139,7 @@ func InitialModel(path string) Model {
 }
 
 func (m Model) Init() tea.Cmd {
-	return tea.Batch(m.spinner.Tick, getFilesCmd(m.importPath), tick())
+	return tea.Batch(m.spinner.Tick, parseFilesCmd(), tick())
 }
 
 func (m *Model) sortActs() tea.Cmd {
@@ -209,7 +209,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.list.ResetFilter()
 				cmd := m.list.SetItems([]list.Item{})
 
-				cmds = append(cmds, cmd, getFilesCmd(m.importPath))
+				cmds = append(cmds, cmd, parseFilesCmd())
 
 			}
 		case "m":
@@ -328,10 +328,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
-	case getFilesResultMsg:
+	case parseFilesMsg:
 		// list of `NotAsked` activities
-		activities := make([]*common.Activity, len(msg))
-		for i, path := range msg {
+		paths := m.importFilePaths
+		activities := make([]*common.Activity, len(paths))
+		for i, path := range paths {
 			activities[i] = &common.Activity{
 				Path: path,
 				Data: asyncdata.NewNotAsked[error, common.ActivityData](),
@@ -924,21 +925,16 @@ func (m Model) View() string {
 }
 
 type (
-	getFilesResultMsg  []string
+	parseFilesMsg      struct{}
 	parseFileResultMsg struct{ *common.Activity }
 	errMsg             struct{ err error }
 )
 
 func (e errMsg) Error() string { return e.err.Error() }
 
-func getFilesCmd(path string) tea.Cmd {
+func parseFilesCmd() tea.Cmd {
 	return func() tea.Msg {
-		files, err := fit.GetFitFiles(path)
-		if err != nil {
-			return errMsg{err}
-		}
-		return getFilesResultMsg(files)
-
+		return parseFilesMsg{}
 	}
 }
 

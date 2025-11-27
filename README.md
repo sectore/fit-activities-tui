@@ -40,8 +40,8 @@ Usage:
 
 Flags:
   -h, --help            help for fit-activities-tui
-  -i, --import string   path to FIT file, directory, or glob pattern (e.g., '*.fit', 'dir/*_walk-*.fit'). Patterns must be in quotes; use full paths only (no shorthands)
-      --log             enable logging to store logs into 'debug.log'
+  -i, --import string   Path to directory or single FIT file or glob patterns (e.g., '2025-11*.fit', 'dir/*ice*.fit'). Put path in quotes; use full paths (no shorthands)
+      --log             Enable logging to store logs into 'debug.log'
 ```
 
 # Keybindings

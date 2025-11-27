@@ -2,7 +2,6 @@ package fit
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -18,10 +17,15 @@ func isValidFitFile(path string) bool {
 	return err == nil && !info.IsDir() && isFitFile(info)
 }
 
-func GetFitFiles(path string) ([]string, error) {
-	var fitFiles []string
+func filesOrError(files []string, path string) ([]string, error) {
+	if len(files) == 0 {
+		return nil, fmt.Errorf("Given path does not include FIT files: %s", path)
+	}
+	return files, nil
+}
 
-	log.Printf("param %v", path)
+func GetFitFilePaths(path string) ([]string, error) {
+	var fitFiles []string
 
 	// 1. Try glob pattern first
 	if strings.ContainsAny(path, "*?[") {
@@ -29,14 +33,12 @@ func GetFitFiles(path string) ([]string, error) {
 		if err != nil {
 			return nil, fmt.Errorf("invalid glob pattern: %v", err)
 		}
-		log.Printf("matches %v", matches)
 		for _, p := range matches {
-			log.Printf("match %v", p)
 			if isValidFitFile(p) {
 				fitFiles = append(fitFiles, p)
 			}
 		}
-		return fitFiles, nil
+		return filesOrError(fitFiles, path)
 	}
 
 	// 2. Try as directory
@@ -47,7 +49,7 @@ func GetFitFiles(path string) ([]string, error) {
 				fitFiles = append(fitFiles, filepath.Join(path, entry.Name()))
 			}
 		}
-		return fitFiles, nil
+		return filesOrError(fitFiles, path)
 	}
 
 	// 3. Try as single file
@@ -55,5 +57,5 @@ func GetFitFiles(path string) ([]string, error) {
 		fitFiles = append(fitFiles, path)
 	}
 
-	return fitFiles, nil
+	return filesOrError(fitFiles, path)
 }
