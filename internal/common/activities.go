@@ -142,7 +142,7 @@ func (a Altitude) Format() string {
 	if a.Value == 0 {
 		return "0m"
 	}
-	return fmt.Sprintf("%.fm", a.Value)
+	return fmt.Sprintf("%.1fm", a.Value)
 }
 
 type AltitudeStats struct {
