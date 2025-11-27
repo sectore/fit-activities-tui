@@ -233,10 +233,10 @@ func (ad ActivityData) NoRecords() int {
 }
 
 func (ad ActivityData) StartTime() *Time {
-	if ad.NoRecords() == 0 || ad.Records[0].Time == nil {
-		return nil
+	if ad.NoRecords() > 0 && ad.Records[0].Time != nil {
+		return ad.Records[0].Time
 	}
-	return ad.Records[0].Time
+	return nil
 }
 
 func (ad ActivityData) FinishTime() *Time {
