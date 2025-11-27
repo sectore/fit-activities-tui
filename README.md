@@ -40,7 +40,7 @@ Usage:
 
 Flags:
   -h, --help            help for fit-activities-tui
-  -i, --import string   path to single FIT file or directory of FIT files to import
+  -i, --import string   path to FIT file, directory, or glob pattern (e.g., '*.fit', 'dir/*_walk-*.fit'). Patterns must be in quotes; use full paths only (no shorthands)
       --log             enable logging to store logs into 'debug.log'
 ```
 

@@ -57,7 +57,8 @@ func Execute() {
 		os.Exit(1)
 	}
 }
+
 func init() {
-	rootCmd.PersistentFlags().StringP("import", "i", "", "path to single FIT file or directory of FIT files to import")
+	rootCmd.PersistentFlags().StringP("import", "i", "", "path to FIT file, directory, or glob pattern (e.g., '*.fit', 'dir/*_walk-*.fit'). Patterns must be in quotes; use full paths only (no shorthands)")
 	rootCmd.PersistentFlags().Bool("log", false, "enable logging to store logs into 'debug.log'")
 }
